@@ -1,28 +1,20 @@
 (ns misplaced-villages.state
   (:require [clojure.spec :as s]
             [clojure.spec.test :as stest]
+            [clojure.spec.gen :as gen]
             [clojure.core.match :refer [match]]
             [dire.core :refer [with-pre-hook!]]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.string :as str]))
 
-;; cards
 (def colors #{:green :red :blue :white :yellow})
 (def color? colors)
 (def type? #{:wager :number})
 (def number? #{2 3 4 5 6 7 8 9 10})
 
 (s/def :card/type type?)
-
-(map #(s/valid? :card/type %) [:zoogaloo :wager :number])
-
 (s/def :card/color color?)
-
-(map #(s/valid? :card/color %) [:orange :green :red :blue :white :yellow])
-
-
 (s/def :card/number number?)
-
-(map #(s/valid? :card/number %) [0 1 2 3 4 5 6 7 8 9 10 11])
 
 (s/def :game/wager-card (s/keys :req [:card/type :card/color]))
 (s/def :game/number-card (s/keys :req [:card/type :card/color :card/number]))
@@ -31,34 +23,8 @@
 (defmethod card-type :wager [_] (s/keys :req [:card/type :card/color]))
 (defmethod card-type :number [_] (s/keys :req [:card/type :card/color :card/number]))
 
-(s/valid? :game/wager-card #:card{:type :number
-                                  :color :green
-                                  :number 3})
-
 (s/def :game/card (s/multi-spec card-type :card/type))
 
-(let [card #:card{}]
-  (map #(s/valid? % card) [:game/card :game/wager-card :game/number-card]))
-
-(let [card #:card{:type :wager
-                  :color :green}]
-  (map #(s/valid? % card) [:game/card :game/wager-card :game/number-card]))
-
-(let [card #:card{:type :wager
-                  :color :orange}]
-  (map #(s/valid? % card) [:game/card :game/wager-card :game/number-card]))
-
-(let [card #:card{:type :number
-                  :color :green
-                  :number 100}]
-  (map #(s/valid? % card) [:game/card :game/wager-card :game/number-card]))
-
-(let [card #:card{:type :number
-                  :color :green
-                  :number 3}]
-  (map #(s/valid? % card) [:game/card :game/wager-card :game/number-card]))
-
-;; constructing number cards
 (defn number-card
   [color number]
   {:card/type :number :card/color color :card/number number})
@@ -69,12 +35,6 @@
 
 (stest/instrument `number-card)
 
-(comment
-  (number-card :orange 0)
-  (number-card :green 2)
-)
-
-;; constructing wager cards
 (defn wager-card
   [color]
   {:card/type :wager :card/color color})
@@ -84,8 +44,6 @@
   :ret :game/card)
 
 (stest/instrument `wager-card)
-
-;; more things
 
 (defn cards-for-color
   [color]
@@ -100,11 +58,12 @@
 (s/def :game/players (s/cat :one :game/player
                             :two :game/player))
 
-(s/def :game/discard (s/coll-of :game/card))
-(s/def :game/discards (s/map-of :game/player :game/discard))
+(s/def :card/discard (s/coll-of :game/card))
+(s/def :game/discards (s/map-of :card/color :card/discard))
 
-(s/def :game/expedition (s/coll-of :game/card))
-(s/def :game/expeditions (s/map-of :game/player :game/expedition))
+(s/def :card/expedition (s/coll-of :game/card))
+(s/def :card/expeditions (s/map-of :card/color (s/spec :card/expedition)))
+(s/def :game/expeditions (s/map-of :game/player (s/spec :card/expeditions)))
 
 (s/def :game/hand (s/coll-of :game/card :count 8))
 (s/def :game/hands (s/map-of :game/player :game/hand))
@@ -113,111 +72,162 @@
 
 (s/def :game/deck (s/coll-of :game/card))
 
+(s/def :move/source (conj colors :deck))
+(s/def :move/destination #{:expedition :discard})
+(s/def :game/move (s/keys :req [:game/player
+                                :game/card
+                                :move/destination
+                                :move/source]))
+(s/def :game/status #{:wrong-player
+                      :card-not-in-hand
+                      :not-in-hand
+                      :expedition-underway
+                      :discard-empty
+                      :too-low
+                      :taken})
+
+(s/def :game/moves (s/* :game/move))
+
 (s/def :game/state
-  (s/keys :req [:game/hands
-                :game/turn
+  (s/keys :req [:game/turn
+                :game/players
+                :game/hands
                 :game/discards
                 :game/expeditions
+                :game/moves
                 :game/deck]))
 
 (defn start-game
   [players]
   (let [deck (shuffle deck)]
-    #:game{:turn (rand-nth players)
-           :discards empty-stacks
-           :deck (drop 16 deck)
-           :moves []
-           :hands {:mike (take 8 deck)
-                   :abby (take 8 (drop 8 deck))}
-           :expeditions {:mike empty-stacks
-                         :abby empty-stacks}}))
+    {:game/turn (rand-nth players)
+     :game/players players
+     :game/discards empty-stacks
+     :game/hands {:mike (take 8 deck)
+                  :abby (take 8 (drop 8 deck))}
+     :game/deck (drop 16 deck)
+     :game/moves []
+     :game/expeditions {:mike empty-stacks
+                        :abby empty-stacks}}))
 
 (s/fdef start-game
-  ;; TODO: Why doesn't this work?
-;;  :args (s/cat :players :game/players)
+  :args (s/cat :foo (s/spec :game/players))
   :ret :game/state)
 
 (stest/instrument `start-game)
 
-(start-game [:bob :alice])
 
+(defn right-player?
+  [state move]
+  (= (:game/turn state) (:game/player move)))
 
+(defn validate-placement
+  [{:keys [:game/hands :game/expeditions]} {:keys [:game/player :game/card :move/destination]}]
+  (if-not (some #(= % card) (get hands player))
+    :not-in-hand
+    (when (= destination :expedition)
+      (let [{:keys [:card/type :card/color :card/number]} card
+            expedition (get-in expeditions [player color])
+            top-card (last expedition)]
+        (when-not (or (nil? top-card) (= (:card/type top-card) :wager))
+          (if (= type :wager)
+            :expedition-underway
+            (when-not (> number (:card/number top-card))
+              :too-low)))))))
 
-(comment
-(defn process-move
-  [{:keys [turn hands expeditions]} action card player]
-  (cond
-    (not= turn player) [:not-your-turn]
-    (not (contains? (hands player) card)) [:not-in-hand]
-    :else (let [[color type number] card
-                expedition (color (expedition player))]
-            (if (empty? expedition)
-              [:start-expedition color]
-              (let [wager? (= type :wager)
-                    wage-level (count (filter #(= (:type %) :wager) expedition))
-                    [_ last-type last-number] (last expedition)
-                    numbered? (= last-type :number)]
-                (cond
-                  (and wager? numbered?) [:wage-rejection]
-                  wager? [:wage (inc wage-level)]
-                  (< number ))
-                  )
+(defn validate-draw
+  [state move]
+  (let [source (:move/source move)]
+    (when (and (not= (:move/source move) :deck)
+               (empty? (get-in state [:game/discards state])))
+      :discard-empty)))
 
-                )
+(defn card-in-hand?
+  [state move]
+  (let [hands (:game/hands state)
+        player (:game/player move)
+        card (:game/card move)]
+    (some #(= % card) (get hands player))))
 
-              )
-            )
+(defn remove-first
+  [coll item]
+  (let [[before from] (split-with (partial not= item) coll)]
+    (concat before (rest from))))
 
-    )
-  (if-not (= turn player)
-    {:status :wrong-player}
-    (let [expeditions (get expeditions player)]
-      (if-not (contains? (hands player) (dissoc card :player))
+(defn draw-card
+  [state move]
+  (let [source (:move/source move)]
+    (if (= source :deck)
+      (let [[top-card & rest-of-deck] (:game/deck state)]
+        [top-card (assoc state :game/deck state)])
+      (let [discard (get-in state [:game/discards source])
+            top-card (last discard)
+            discard (drop discard (dec (count discard)))]
+        [top-card (assoc-in state [:game/discards source] discard)]))))
 
+(defn remove-first-from-hand
+  [state player card]
+  (update-in state [:game/hands player] #(remove-first % card)))
 
-        (let [[color type number] card
-              expedition (color (expeditions player))
-              [last-color last-type last-number] (last expedition)]
-          (if (empty? expedition)
-            {:status :played
-             :state (make-move state move)}
+(defn add-to-hand
+  [state player card]
+  (update-in state [:game/hands player] #(conj % card)))
 
-            ;; play card
-            ;; check if valid, error if not, play if valid
+(defn discard-card
+  [state card]
+  (update-in state [:game/discards (:card/color card)] #(conj % card)))
 
-            )))))
+(defn play-card
+  [state player card]
+  (update-in state [:game/expeditions player (:card/color card)] #(conj % card)))
 
+(defn make-move
+  [state move]
+  (let [player (:game/player move)
+        card (:game/card move)
+        place-card (case (:move/destination move)
+                     :expedition #(play-card % player card)
+                     :discard #(discard-card % card))
+        state (-> state
+                  (remove-first-from-hand player card)
+                  (place-card)
+                  (update :moves #(conj % move)))
+        [drawn-card state] (draw-card state move)]
+    (add-to-hand state player drawn-card)))
 
+(defn take-turn
+  [state move]
+  (if-not (right-player? state move)
+    {:control/status :wrong-player}
+    (if-not (card-in-hand? state move)
+      {:control/status :card-not-in-hand}
+      (if-let [placement-issue (validate-placement state move)]
+        {:control/status placement-issue}
+        (if-let [draw-issue (validate-draw state move)]
+          {:control/status draw-issue}
+          {:control/status :taken
+           :game/state (make-move state move)})))))
 
+(s/fdef take-turn
+  :args (s/cat :state :game/state :move :game/move)
+  :ret (s/keys :req [:control/status
+                     :game/state]))
 
+(defn str-card
+  [{:keys [:card/type :card/color :card/number]}]
+  (str (str/capitalize (name color)) " " (or number "Wager")))
 
-  [expeditions {:keys [type color number]}]
+(map str-card (gen/sample (s/gen :game/card) 8))
 
+(defn str-state
+  [state]
+  (let [{:keys [:game/deck :game/turn
+                :game/moves :game/hands]} state
+        ]
+    {:deck (str "There " (count deck) " cards left in the deck.")
+     :turn (str "It is " (name turn) "'s turn.")
+     :moves (str "There have been " (count moves) " moves so far.")
+     :hands (into {} (map (fn [[player hand]] [player (map str-card hand)]) hands))
+     }))
 
-  (defn take-turn
-    [{:keys [turn hands expeditions] :as state} {:keys [player card] :as move}]
-    (if-not (= turn player)
-      {:status :wrong-player :state state}
-      (let [expeditions (get expeditions player)]
-        (if-not (contains? (hands player) card)
-          {:status :wrong-card :state state}
-          (let [[color type number] card
-                expedition (color (expeditions player))
-                [last-color last-type last-number] (last expedition)]
-            (if (empty? expedition)
-              {:status :played
-               :state (make-move state move)}
-
-              ;; play card
-              ;; check if valid, error if not, play if valid
-
-              ))))))
-
-p  (with-pre-hook! #'take-turn
-    (fn [state move]
-      (log/info "Move:" move)))
-
-
-  (let [state (assoc (start-game) :turn :mike)]
-    (take-turn state [:abby 1 2]))
-  )
+(str-state (start-game [:Mike :Abby]))
