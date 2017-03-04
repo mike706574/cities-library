@@ -1,6 +1,6 @@
 # misplaced-villages
 
-A project.
+Lost Cities in Clojure. Or an excuse to thoroughly use spec.
 
 ## Copyright and License
 
