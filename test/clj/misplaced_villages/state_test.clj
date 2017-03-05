@@ -1,114 +1,96 @@
 (ns misplaced-villages.state-test
-  (:require [misplaced-villages.state :as domain]
-            [clojure.test :refer :all]))
+  (:require
+   [clojure.test :refer :all]
+   [misplaced-villages.state :as game :refer [move
+                                              wager-card
+                                              number-card
+                                              empty-piles]]))
 
-(def state
-  #:game{:turn :bob,
-         :players [:bob :alice],
-         :discards
-         {:white [], :yellow [], :green [], :red [], :blue []},
-         :hands
-         {:bob
-          '(#:card{:type :number, :color :red, :number 7}
-                  #:card{:type :number, :color :blue, :number 3}
-                  #:card{:type :number, :color :green, :number 9}
-                  #:card{:type :number, :color :red, :number 6}
-                  #:card{:type :wager, :color :yellow}
-                  #:card{:type :number, :color :red, :number 5}
-                  #:card{:type :number, :color :white, :number 8}
-                  #:card{:type :number, :color :yellow, :number 9}),
-          :alice
-          '(#:card{:type :wager, :color :blue}
-                  #:card{:type :number, :color :blue, :number 10}
-                  #:card{:type :number, :color :green, :number 2}
-                  #:card{:type :number, :color :green, :number 10}
-                  #:card{:type :number, :color :blue, :number 2}
-                  #:card{:type :number, :color :blue, :number 7}
-                  #:card{:type :wager, :color :blue}
-                  #:card{:type :wager, :color :red})},
-         :deck
-         '(#:card{:type :number, :color :white, :number 5}
-                 #:card{:type :number, :color :yellow, :number 5}
-                 #:card{:type :number, :color :blue, :number 4}
-                 #:card{:type :number, :color :blue, :number 5}
-                 #:card{:type :number, :color :green, :number 7}
-                 #:card{:type :number, :color :white, :number 2}
-                 #:card{:type :number, :color :green, :number 5}
-                 #:card{:type :number, :color :green, :number 4}
-                 #:card{:type :number, :color :yellow, :number 3}
-                 #:card{:type :number, :color :yellow, :number 7}
-                 #:card{:type :number, :color :green, :number 6}
-                 #:card{:type :number, :color :blue, :number 6}
-                 #:card{:type :number, :color :yellow, :number 10}
-                 #:card{:type :wager, :color :red}
-                 #:card{:type :wager, :color :white}
-                 #:card{:type :number, :color :green, :number 8}
-                 #:card{:type :wager, :color :green}
-                 #:card{:type :number, :color :yellow, :number 8}
-                 #:card{:type :number, :color :red, :number 9}
-                 #:card{:type :number, :color :white, :number 3}
-                 #:card{:type :number, :color :red, :number 2}
-                 #:card{:type :number, :color :red, :number 8}
-                 #:card{:type :number, :color :white, :number 10}
-                 #:card{:type :wager, :color :white}
-                 #:card{:type :wager, :color :yellow}
-                 #:card{:type :wager, :color :green}
-                 #:card{:type :number, :color :yellow, :number 4}
-                 #:card{:type :number, :color :yellow, :number 6}
-                 #:card{:type :number, :color :red, :number 4}
-                 #:card{:type :number, :color :white, :number 6}
-                 #:card{:type :wager, :color :white}
-                 #:card{:type :number, :color :red, :number 10}
-                 #:card{:type :number, :color :white, :number 7}
-                 #:card{:type :number, :color :white, :number 9}
-                 #:card{:type :number, :color :white, :number 4}
-                 #:card{:type :wager, :color :green}
-                 #:card{:type :number, :color :blue, :number 8}
-                 #:card{:type :number, :color :yellow, :number 2}
-                 #:card{:type :number, :color :blue, :number 9}
-                 #:card{:type :wager, :color :red}
-                 #:card{:type :wager, :color :yellow}
-                 #:card{:type :number, :color :green, :number 3}
-                 #:card{:type :number, :color :red, :number 3}
-                 #:card{:type :wager, :color :blue}),
-         :moves [],
-         :expeditions
-         {:bob {:white [], :yellow [], :green [], :red [], :blue []},
-          :alice {:white [], :yellow [], :green [], :red [], :blue []}}})
+(deftest finding-possible-moves
+  (is
+   (= [(move "mike" (wager-card :blue) :discard-pile :blue)
+       (move "mike" (wager-card :blue) :discard-pile :draw-pile)
+       (move "mike" (wager-card :blue) :expedition :draw-pile)]
+      (game/possible-moves
+       {:game/turn "mike"
+        :game/moves []
+        :game/discard-piles empty-piles
+        :game/draw-pile []
+        :game/players {"mike" {:player/hand [(wager-card :blue)]
+                               :player/expeditions empty-piles}}}))
+   "If we have a wager card and an expedition has no number card, the wager card can be played.")
+  (is
+   (= [(move "mike" (wager-card :blue) :discard-pile :blue)
+       (move "mike" (wager-card :blue) :discard-pile :draw-pile)]
+      (game/possible-moves
+       {:game/turn "mike"
+        :game/moves []
+        :game/discard-piles empty-piles
+        :game/draw-pile []
+        :game/players {"mike" {:player/hand [(wager-card :blue)]
+                              :player/expeditions {:green []
+                                                   :red []
+                                                   :blue [(number-card :blue 2)]
+                                                   :white []
+                                                   :yellow []}}}}))
+   "If there is a number card in an expedition, no wager card can be played."))
 
-(deftest logic
-  (is (= :wrong-player
-         (:control/status (domain/take-turn
-                           state
-                           {:game/player :alice
-                            :move/destination :expedition
-                            :move/source :deck
-                            :game/card {:card/type :wager
-                                        :card/color :blue}}))))
-  (is (= :card-not-in-hand
-         (:control/status (domain/take-turn
-                           state
-                           {:game/player :bob
-                            :move/destination :expedition
-                            :move/source :deck
-                            :game/card {:card/type :wager
-                                        :card/color :blue}}))))
 
-  (is (= :card-not-in-hand
-         (:control/status (domain/take-turn
-                           state
-                           {:game/player :bob
-                            :move/destination :expedition
-                            :move/source :deck
-                            :game/card {:card/type :wager
-                                        :card/color :yellow}})))))
+(deftest determining-if-game-is-over
+  (is (game/game-over? {:game/turn "mike"
+                   :game/moves []
+                   :game/discard-piles empty-piles
+                   :game/draw-pile []
+                   :game/players {"mike" {:player/hand [(wager-card :blue)]
+                                          :player/expeditions empty-piles}}})
+      "If there are no cards in the draw pile, the game is over.")
+  (is (not (game/game-over?  {:game/turn "mike"
+                         :game/moves []
+                         :game/discard-piles empty-piles
+                         :game/draw-pile [(wager-card :blue)]
+                         :game/players {"mike" {:player/hand []
+                                                :player/expeditions empty-piles}}}))
+      "If there are cards in the draw pile, the game isn't over."))
 
-(let [move-1 {:game/player :bob
-              :move/destination :expedition
-              :move/source :deck
-              :game/card {:card/type :wager
-                          :card/color :yellow}}
-      {:keys [:control/status :game/state]} (-> state
-                                                ) ]
+(deftest scoring-expeditions
+  (is
+   (= 0 (game/expedition-score []))
+   "If no cards are placed in an expedition, no costs are incurred.")
 
-  )
+  (is
+   (= -20 (game/expedition-score [(wager-card :blue)]))
+   "Starting an expedition costs 20 points.")
+
+  (is
+   (= 0 (game/expedition-score [(number-card :blue 2)
+                                 (number-card :blue 8)
+                                 (number-card :blue 10)]))
+   "Number add points to the expedition.")
+
+  (is
+   (= 0 (game/expedition-score [(wager-card :blue)
+                                (number-card :blue 10)]))
+   "One wager card multiples the score by 2.")
+
+  (is
+   (= 10 (game/expedition-score [(wager-card :blue)
+                                 (wager-card :blue)
+                                 (number-card :blue 10)]))
+   "Two wager cards multiply the score by 3.")
+
+  (is
+   (= 20 (game/expedition-score [(wager-card :blue)
+                                 (wager-card :blue)
+                                 (wager-card :blue)
+                                 (number-card :blue 10)]))
+   "Three wager cards multiply the score by 4.")
+
+  (is (= 80 (game/expedition-score [(wager-card :blue)
+                                    (wager-card :blue)
+                                    (wager-card :blue)
+                                    (number-card :blue 2)
+                                    (number-card :blue 3)
+                                    (number-card :blue 4)
+                                    (number-card :blue 5)
+                                    (number-card :blue 6)]))
+      "If an expedition contains 8 or more cards, a bonus of 20 is awarded."))

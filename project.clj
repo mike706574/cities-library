@@ -1,6 +1,6 @@
 (defproject mike/misplaced-villages "0.0.1-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
-                 [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.clojure/math.combinatorics "0.1.4"]
                  [com.taoensso/timbre "4.8.0"]
                  [dire "0.5.4"]]
   :min-lein-version "2.0.0"
