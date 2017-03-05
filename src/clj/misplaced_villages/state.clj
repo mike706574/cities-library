@@ -51,33 +51,35 @@
    (take 3 (repeat (wager-card color)))
    (map (partial number-card color) (range 2 11))))
 
-(def deck (reduce concat (map cards-for-color colors)))
+(def card-set (reduce concat (map cards-for-color colors)))
 (def empty-stacks (into {} (map #(vector % []) colors)))
 
-(s/def :game/player keyword?)
-(s/def :game/players (s/cat :one :game/player
-                            :two :game/player))
+(s/def :player/name (s/and string? (complement str/blank?)))
+(s/def :player/expedition (s/coll-of :game/card))
+(s/def :player/expeditions (s/map-of :card/color (s/spec :player/expedition)))
+(s/def :player/hand (s/coll-of :game/card))
+(s/def :player/data (s/keys :req [:player/hand
+                                  :player/expeditions]))
 
-(s/def :card/discard (s/coll-of :game/card))
-(s/def :game/discards (s/map-of :card/color :card/discard))
+(s/def :game/players (s/map-of :player/name :player/data))
 
-(s/def :card/expedition (s/coll-of :game/card))
-(s/def :card/expeditions (s/map-of :card/color (s/spec :card/expedition)))
-(s/def :game/expeditions (s/map-of :game/player (s/spec :card/expeditions)))
-
-(s/def :game/hand (s/coll-of :game/card :count 8))
-(s/def :game/hands (s/map-of :game/player :game/hand))
+(s/def :game/draw-pile (s/coll-of :game/card))
+(s/def :game/discard-piles (s/map-of :card/color :card/discard))
 
 (s/def :game/turn :game/player)
 
 (s/def :game/deck (s/coll-of :game/card))
 
+;; A move consists of two phases: placing and drawing
 (s/def :move/source (conj colors :deck))
-(s/def :move/destination #{:expedition :discard})
-(s/def :game/move (s/keys :req [:game/player
+(s/def :move/destination #{:expedition :discard-pile})
+(s/def :game/move (s/keys :req [:player/namae
                                 :game/card
                                 :move/destination
                                 :move/source]))
+(s/def :game/moves (s/* :game/move))
+
+;; Status after an attempted move
 (s/def :game/status #{:wrong-player
                       :card-not-in-hand
                       :not-in-hand
@@ -86,75 +88,90 @@
                       :too-low
                       :taken})
 
-(s/def :game/moves (s/* :game/move))
+;; Options
+(s/def :option/deck-size (s/and integer? #(<= 0 % (count card-set))))
+(s/def :option/hand-size (s/and integer? pos?))
+(s/def :game/options (s/keys :req [:option/deck-size
+                                   :option/hand-size]))
 
+;; Full game state
 (s/def :game/state
   (s/keys :req [:game/turn
                 :game/players
-                :game/hands
-                :game/discards
-                :game/expeditions
+                :game/discard-piles
                 :game/moves
-                :game/deck]))
+                :game/draw-pipe]))
 
 (defn start-game
-  [players]
-  (let [deck (shuffle deck)]
-    {:game/turn (rand-nth players)
-     :game/players players
-     :game/discards empty-stacks
-     :game/hands {:mike (take 8 deck)
-                  :abby (take 8 (drop 8 deck))}
-     :game/deck (drop 16 deck)
-     :game/moves []
-     :game/expeditions {:mike empty-stacks
-                        :abby empty-stacks}}))
+  [player-names]
+  (let [hand-size 8
+        deck-size 44
+        full-deck (take deck-size (shuffle card-set))
+        player-count (count player-names)
+        deal-count (* hand-size player-count)
+        hands (partition hand-size (take deal-count full-deck))
+        draw-pile (drop deal-count full-deck)
+        player-data (map (fn [hand] {:player/hand hand
+                                     :player/expeditions empty-stacks}) hands)
+        players (zipmap player-names player-data)]
+      {:game/turn (rand-nth player-names)
+       :game/players players
+       :game/discard-piles empty-stacks
+       :game/draw-pile draw-pile
+       :game/moves []}))
 
 (s/fdef start-game
-  :args (s/cat :foo (s/spec :game/players))
-  :ret :game/state)
+        :args (s/cat :player-names (s/coll-of :player/name))
+        :ret :game/state)
 
 (stest/instrument `start-game)
 
-
 (defn right-player?
   [state move]
-  (= (:game/turn state) (:game/player move)))
+  (= (:game/turn state) (:player/name move)))
 
 (defn validate-placement
-  [{:keys [:game/hands :game/expeditions]} {:keys [:game/player :game/card :move/destination]}]
-  (if-not (some #(= % card) (get hands player))
-    :not-in-hand
-    (when (= destination :expedition)
-      (let [{:keys [:card/type :card/color :card/number]} card
-            expedition (get-in expeditions [player color])
-            top-card (last expedition)]
-        (when-not (or (nil? top-card) (= (:card/type top-card) :wager))
-          (if (= type :wager)
-            :expedition-underway
-            (when-not (> number (:card/number top-card))
-              :too-low)))))))
+  "Validates card placement. Returns nil if valid, keyword error condition if invalid."
+  [state move]
+  (let [{:keys [:game/player :game/card :move/destination]} move
+        player (get-in state [:game/players player])
+        {:keys [:player/hand :player/expeditions]} player]
+      (if-not (some #(= % card) hand)
+        :not-in-hand
+        ;; It's always OK to discard.
+        (when (= destination :expedition)
+          :expedition (let [{:keys [:card/type :card/color :card/number]} card
+                            expedition (get expeditions color)
+                            top-card (last expedition)]
+                        (when-not (or (nil? top-card) (= (:card/type top-card) :wager))
+                          (case type
+                            :wager :expedition-underway
+                            :number (when-not (> number (:card/number top-card))
+                                      :too-low))))))))
 
 (defn validate-draw
+  "Validates card draw. Returns nil if valid, keyword error condition if invalid."
   [state move]
   (let [source (:move/source move)]
     (when (and (not= (:move/source move) :deck)
-               (empty? (get-in state [:game/discards state])))
-      :discard-empty)))
+               (empty? (get-in state [:game/discard-piles state])))
+      :discard-pipe-empty)))
 
+;; TODO: Is this used?
 (defn card-in-hand?
   [state move]
-  (let [hands (:game/hands state)
-        player (:game/player move)
-        card (:game/card move)]
-    (some #(= % card) (get hands player))))
+  (let [{:keys [:game/player :game/card]} (:game/player move)
+        hand (get-in state [:game/players player :player/hand])]
+    (some #(= % card) hand)))
 
 (defn remove-first
+  "Removes the first instance of item from coll."
   [coll item]
   (let [[before from] (split-with (partial not= item) coll)]
     (concat before (rest from))))
 
 (defn draw-card
+  "Draws a card, either from the draw pile or the discard pile specified in move."
   [state move]
   (let [source (:move/source move)]
     (if (= source :deck)
@@ -166,22 +183,27 @@
         [top-card (assoc-in state [:game/discards source] discard)]))))
 
 (defn remove-first-from-hand
+  "Removes the first instance of card from the given player's hand."
   [state player card]
   (update-in state [:game/hands player] #(remove-first % card)))
 
 (defn add-to-hand
+  "Adds an instance of card to the given player's hand."
   [state player card]
   (update-in state [:game/hands player] #(conj % card)))
 
 (defn discard-card
+  "Places an instance of card into the appropriate discard pile based on card color."
   [state card]
   (update-in state [:game/discards (:card/color card)] #(conj % card)))
 
 (defn play-card
+  "Places an instance of card into the player's appropriate expedition based on card color."
   [state player card]
   (update-in state [:game/expeditions player (:card/color card)] #(conj % card)))
 
 (defn make-move
+  "Performs the given move. Moves consist of two phases: placement and draw."
   [state move]
   (let [player (:game/player move)
         card (:game/card move)
@@ -227,7 +249,6 @@
     {:deck (str "There " (count deck) " cards left in the deck.")
      :turn (str "It is " (name turn) "'s turn.")
      :moves (str "There have been " (count moves) " moves so far.")
-     :hands (into {} (map (fn [[player hand]] [player (map str-card hand)]) hands))
-     }))
+     :hands (into {} (map (fn [[player hand]] [player (map str-card hand)]) hands))}))
 
-(str-state (start-game [:Mike :Abby]))
+;;(str-state (start-game [:Mike :Abby]))
