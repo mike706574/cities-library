@@ -3,8 +3,6 @@
             [clojure.spec.test :as stest]
             [clojure.spec.gen :as gen]
             [clojure.math.combinatorics :as combo]
-            [dire.core :refer [with-pre-hook!]]
-            [taoensso.timbre :as log]
             [clojure.string :as str]
             [misplaced-villages.card :as card]
             [misplaced-villages.player :as player]))
@@ -31,3 +29,4 @@
                :destination ::destination
                :source ::source)
   :ret ::move)
+x

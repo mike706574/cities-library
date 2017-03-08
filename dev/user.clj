@@ -12,6 +12,4 @@
    [clojure.test :as test]
    [clojure.tools.namespace.repl :refer [refresh refresh-all]]))
 
-
-(comment :scratch
-         )
+(comment :scratch)

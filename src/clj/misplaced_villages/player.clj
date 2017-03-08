@@ -9,6 +9,7 @@
                                      (<= 0 (count distinct-colors) 1)))))
 
 (s/def ::expeditions (s/map-of ::card/color (s/spec ::expedition)))
+(s/def ::opponent-expeditions (s/map-of ::card/color (s/spec ::expedition)))
 (s/def ::hand (s/coll-of ::card/card))
 (s/def ::data (s/keys :req [::hand
                             ::expeditions]))

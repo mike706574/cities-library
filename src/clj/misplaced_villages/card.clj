@@ -24,7 +24,7 @@
   [color number]
   {::type :number ::color color ::number number})
 
-(s/fdef number-card
+(s/fdef number
   :args (s/cat :color ::color :number ::number)
   :ret ::number-card)
 
@@ -32,9 +32,15 @@
   [color]
   {::type :wager ::color color})
 
-(s/fdef wager-card
+(s/fdef wager
   :args (s/cat :color ::color)
   :ret ::card)
+
+(defn card
+  [{type :type color :color num :number}]
+  (case type
+    :wager (wager color)
+    :number (number color num)))
 
 (defn for-color
   [color]
