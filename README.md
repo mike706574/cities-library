@@ -1,6 +1,6 @@
 # misplaced-villages
 
-Lost Cities in Clojure. Or an excuse to thoroughly use spec.
+[Lost Cities](https://en.wikipedia.org/wiki/Lost_Cities) in Clojure. Or an excuse to thoroughly use spec.
 
 ## Copyright and License
 
