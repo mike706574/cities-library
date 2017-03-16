@@ -1,4 +1,5 @@
 # misplaced-villages
+[![CircleCI](https://circleci.com/gh/mike706574/misplaced-villages.svg?style=svg)](https://circleci.com/gh/mike706574/misplaced-villages)
 
 [Lost Cities](https://en.wikipedia.org/wiki/Lost_Cities) in Clojure. Or an excuse to thoroughly use spec.
 
