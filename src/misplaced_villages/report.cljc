@@ -24,7 +24,7 @@
                 ::turn
                 ::moves
                 ::player-data]} state
-        possible-moves (possible-moves state)]
+        possible-moves (game/possible-moves state)]
     (str/join "\n" [(case (count draw-pile)
                       0 "There are no cards left in the deck."
                       1 "There is 1 card left in the deck."
@@ -69,10 +69,3 @@
     (str/join "\n" [(str "Round #" round-number)
                     ""
                     (str-round round)])))
-
-(defn log-action
-  [state move]
-  (let [{:keys [::game/status ::game/state] :as response} (take-action state move)]
-    (when-not (= status :taken)
-      (throw (ex-info (str "Status: " status) {:status status})))
-    state))
