@@ -1,12 +1,12 @@
-(ns misplaced-villages.game
-  (:require [clojure.spec :as s]
-            [clojure.spec.test :as stest]
-            [clojure.spec.gen :as gen]
-            [clojure.string :as str]
-            [misplaced-villages.card :as card]
-            [misplaced-villages.player :as player]
-            [misplaced-villages.move :as move]
-            [misplaced-villages.game :as game]))
+(ns misplaced-villages.report
+  (:require
+   #?(:clj [clojure.spec :as s]
+      :cljs [cljs.spec :as s])
+   [clojure.string :as str]
+   [misplaced-villages.card :as card]
+   [misplaced-villages.player :as player]
+   [misplaced-villages.move :as move]
+   [misplaced-villages.game :as game]))
 
 (defn str-card
   "Builds a string representation of a card."
@@ -76,12 +76,3 @@
     (when-not (= status :taken)
       (throw (ex-info (str "Status: " status) {:status status})))
     state))
-
-(comment
-  (def game (game/start-game ["Mike" "Abby"]))
-  game
-  (str-game game)
-  (def game-2 (log-action game (move/move "Mike" (card/wager :yellow) :expedition :draw-pile)))
-  (str-game game-2)
-  (game/for-player game "Mike")
-  )

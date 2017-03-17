@@ -1,6 +1,8 @@
 (ns misplaced-villages.player
-  (:require [clojure.spec :as s]
-            [misplaced-villages.card :as card]))
+  (:require
+   #?(:clj [clojure.spec :as s]
+      :cljs [cljs.spec :as s])
+   [misplaced-villages.card :as card]))
 
 (s/def ::id string?)
 (s/def ::expedition (s/and (s/coll-of ::card/card)

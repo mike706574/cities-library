@@ -1,12 +1,28 @@
 (ns misplaced-villages.game
-  (:require [clojure.spec :as s]
-            [clojure.spec.test :as stest]
-            [clojure.spec.gen :as gen]
-            [clojure.math.combinatorics :as combo]
-            [clojure.string :as str]
-            [misplaced-villages.card :as card]
-            [misplaced-villages.player :as player]
-            [misplaced-villages.move :as move]))
+  (:require
+   #?(:clj [clojure.spec :as s]
+      :cljs [cljs.spec :as s])
+   [misplaced-villages.card :as card]
+   [misplaced-villages.player :as player]
+   [misplaced-villages.move :as move]))
+
+(defn cartesian-product
+  [& seqs]
+  (let [v-original-seqs (vec seqs)
+        step
+        (fn step [v-seqs]
+          (let [increment
+                (fn [v-seqs]
+                  (loop [i (dec (count v-seqs)), v-seqs v-seqs]
+                    (if (= i -1) nil
+                        (if-let [rst (next (v-seqs i))]
+                          (assoc v-seqs i rst)
+                          (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
+            (when v-seqs
+              (cons (map first v-seqs)
+                    (lazy-seq (step (increment v-seqs)))))))]
+    (when (every? seq seqs)
+      (lazy-seq (step v-original-seqs)))))
 
 (s/def ::player-data (s/map-of ::player/id ::player/data))
 
@@ -215,7 +231,7 @@
   [round]
   (let [turn (::turn round)
         hand (get-in round [::player-data turn ::player/hand])
-        combos (combo/cartesian-product hand move/destinations move/sources)]
+        combos (cartesian-product hand move/destinations move/sources)]
     (map #(apply move/move turn %) combos)))
 
 (defn possible-moves
@@ -332,7 +348,7 @@
      ::opponent-expeditions opponent-expeditions
      ::discard-piles discard-piles
      ::moves moves
-     ::previous-rounds (butlast rounds)}))
+     ::previous-rounds (or (butlast rounds) [])}))
 
 (s/fdef for-player
   :args (s/cat :state ::state :player ::player/id)

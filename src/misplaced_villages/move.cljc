@@ -1,11 +1,9 @@
 (ns misplaced-villages.move
-  (:require [clojure.spec :as s]
-            [clojure.spec.test :as stest]
-            [clojure.spec.gen :as gen]
-            [clojure.math.combinatorics :as combo]
-            [clojure.string :as str]
-            [misplaced-villages.card :as card]
-            [misplaced-villages.player :as player]))
+  (:require
+   #?(:clj [clojure.spec :as s]
+      :cljs [cljs.spec :as s])
+   [misplaced-villages.card :as card]
+   [misplaced-villages.player :as player]))
 
 ;; A move consists of two phases: placing and drawing
 (def destinations #{:expedition :discard-pile})

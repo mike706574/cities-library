@@ -1,12 +1,10 @@
-(defproject mike/misplaced-villages "0.0.1-SNAPSHOT"
+(defproject org.clojars.mike706574/misplaced-villages "0.0.1-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
-                 [org.clojure/math.combinatorics "0.1.4"]]
-  :min-lein-version "2.0.0"
-  :source-paths ["src/clj"]
-  :test-paths ["test/clj"]
+                 [org.clojure/clojurescript "1.9.495"]]
+  :plugins [[lein-cljsbuild "1.1.5"]]
+  :cljsbuild {:builds [{:source-paths ["src"]
+                        :compiler {:optimizations :none
+                                   :pretty-print true}}]}
   :profiles {:dev {:source-paths ["dev"]
-                   :target-path "target/dev"
                    :dependencies [[org.clojure/test.check "0.9.0"]
-                                  [org.clojure/tools.namespace "0.2.11"]
-                                  [criterium "0.4.4"]]}}
-  :repl-options {:init-ns user})
+                                  [org.clojure/tools.namespace "0.2.11"]]}})

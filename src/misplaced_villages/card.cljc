@@ -1,6 +1,8 @@
 (ns misplaced-villages.card
-  (:require [clojure.spec :as s]
-            [clojure.spec.test :as stest]))
+  (:refer-clojure :exclude [number?])
+  (:require
+   #?(:clj [clojure.spec :as s]
+      :cljs [cljs.spec :as s])))
 
 (def colors #{:green :red :blue :white :yellow})
 (def color? colors)
