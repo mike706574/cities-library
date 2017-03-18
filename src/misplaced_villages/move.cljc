@@ -27,3 +27,53 @@
                :destination ::destination
                :source ::source)
   :ret ::move)
+
+(defn exp
+  [player-id card source]
+  {::player/id player-id
+   ::card/card card
+   ::destination :expedition
+   ::source source})
+
+(s/fdef exp
+  :args (s/cat :player-id ::player/id
+               :card ::card/card
+               :source ::source)
+  :ret ::move)
+
+(defn exp*
+  [player-id card]
+  {::player/id player-id
+   ::card/card card
+   ::destination :discard-pile
+   ::source :draw-pile})
+
+(s/fdef exp*
+  :args (s/cat :player-id ::player/id
+               :card ::card/card)
+  :ret ::move)
+
+(defn disc
+  [player-id card source]
+  {::player/id player-id
+   ::card/card card
+   ::destination :discard-pile
+   ::source source})
+
+(s/fdef disc
+  :args (s/cat :player-id ::player/id
+               :card ::card/card
+               :source ::source)
+  :ret ::move)
+
+(defn disc*
+  [player-id card]
+  {::player/id player-id
+   ::card/card card
+   ::destination :discard-pile
+   ::source :draw-pile})
+
+(s/fdef disc*
+  :args (s/cat :player-id ::player/id
+               :card ::card/card)
+  :ret ::move)

@@ -26,8 +26,8 @@
 
 (s/def ::player-data (s/map-of ::player/id ::player/data))
 
-(s/def ::discard-pile (s/coll-of ::card))
-(s/def ::discard-piles (s/map-of ::card/color ::discard-pile))
+(s/def ::discard-pile (s/coll-of ::card/card))
+(s/def ::discard-piles (s/and (s/map-of ::card/color ::discard-pile)))
 (s/def ::turn ::player/id)
 
 (s/def ::draw-pile (s/coll-of ::card/card))
@@ -42,17 +42,17 @@
                   :too-low
                   :taken})
 
-;; Options
-(s/def ::deck-size (s/and integer? #(<= 0 % (count card/deck))))
-(s/def ::hand-size (s/and integer? pos?))
-
 ;; A round
 (s/def ::round
-  (s/keys :req [::turn
-                ::player-data
-                ::discard-piles
-                ::moves
-                ::draw-pile]))
+  (s/and (s/keys :req [::turn
+                       ::player-data
+                       ::discard-piles
+                       ::moves
+                       ::draw-pile])
+         (fn [{:keys [::player-data ::turn]}]
+           (contains? player-data turn))
+         ;; TODO: Cards should never disappear - use card/combine-piles to make sure
+         ))
 
 (s/def ::rounds (s/coll-of ::round))
 (s/def ::players (s/coll-of ::player/id))
@@ -198,15 +198,32 @@
   [state move]
   (let [player-id (::player/id move)
         card (::card/card move)
+        _ (println (::move/destination move))
         place-card (case (::move/destination move)
                      :expedition #(play-card % player-id card)
-                     :discard #(discard-card % card))
+                     :discard-pile #(discard-card % card))
         state (-> state
                   (remove-first-from-hand player-id card)
                   (place-card)
                   (update ::moves #(conj % move)))
         [drawn-card state] (draw-card state move)]
     (add-to-hand state player-id drawn-card)))
+
+(s/fdef make-move
+  :args (s/cat :state ::round :move ::move/move)
+  :ret ::round)
+
+(defn after-first
+  [coll value]
+  (when-let [index (first (keep-indexed
+                           (fn [index item]
+                             (when (= item value) index))
+                           coll))]
+    (nth (cycle coll) (inc index))))
+
+(defn swap-turn
+  [{turn ::turn player-data ::player-data :as state}]
+  (assoc state ::turn (after-first (keys player-data) turn)))
 
 (defn take-turn
   "Take a turn."
@@ -219,7 +236,9 @@
       (if-let [move-issue (validate-move state move)]
         {::status move-issue}
         {::status :taken
-         ::round (make-move state move)}))))
+         ::round (-> state
+                     (make-move move)
+                     (swap-turn))}))))
 
 (s/fdef take-turn
   :args (s/cat :state ::round :move ::move/move)
@@ -318,6 +337,7 @@
 (s/def ::opponent ::player/id)
 (s/def ::opponent-expeditions ::player/expeditions)
 (s/def ::previous-rounds ::rounds)
+(s/def ::cards-remaining integer?)
 
 (s/def ::player-state (s/keys :req [::turn
                                     ::player/id
@@ -329,7 +349,8 @@
                                     ::opponent-expeditions
                                     ::moves
                                     ::discard-piles
-                                    ::previous-rounds]))
+                                    ::previous-rounds
+                                    ::cards-remaining]))
 
 (defn for-player
   [{:keys [::players ::rounds]} player]
@@ -343,11 +364,13 @@
      ::round-number (count rounds)
      ::draw-count (count draw-pile)
      ::opponent opponent
+     ::player/id player
      ::player/hand hand
      ::player/expeditions expeditions
      ::opponent-expeditions opponent-expeditions
-     ::discard-piles discard-piles
      ::moves moves
+     ::discard-piles discard-piles
+     ::cards-remaining cards-remaining ;; Should this be shown?
      ::previous-rounds (or (butlast rounds) [])}))
 
 (s/fdef for-player

@@ -1,10 +1,14 @@
 (ns misplaced-villages.game-test
   (:require
    [clojure.test :refer :all]
+   [clojure.edn :as edn]
+   [clojure.spec.test :as stest]
+   [clojure.spec.gen :as gen]
    [misplaced-villages.card :as card]
    [misplaced-villages.player :as player]
    [misplaced-villages.move :as move]
-   [misplaced-villages.game :as game]))
+   [misplaced-villages.game :as game]
+   [clojure.spec :as s]))
 
 (deftest finding-possible-moves
   (is
@@ -86,6 +90,7 @@
                                  (card/number :blue 10)]))
    "Three wager cards multiply the score by 4.")
 
+
   (is (= 80 (game/expedition-score [(card/wager :blue)
                                     (card/wager :blue)
                                     (card/wager :blue)
@@ -95,3 +100,17 @@
                                     (card/number :blue 5)
                                     (card/number :blue 6)]))
       "If an expedition contains 8 or more cards, a bonus of 20 is awarded."))
+
+(comment
+  (gen/generate (s/gen #{"Mike" "Abby"}))
+
+  (stest/instrument)
+  (def round (edn/read-string (slurp "test-round-1.edn")))
+
+  (def after (game/take-turn round (move/disc* "Mike" (card/wager :yellow))))
+
+  (gen/generate (s/gen ::move/move))
+
+  (gen/generate (s/gen ::game/round))
+
+  (gen/generate (s/gen ::game/round)))
