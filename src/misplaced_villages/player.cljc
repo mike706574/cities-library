@@ -6,17 +6,6 @@
      (:require [cljs.spec :as s]
                [misplaced-villages.card :as card])))
 
-(s/def ::id string?)
-
-(defn uniform-color?
-  [expedition]
-  (let [distinct-colors (set (map ::card/color expedition))]
-    (<= 0 (count distinct-colors) 1)))
-
-(s/fdef uniform-color?
-  :args (s/cat :cards (s/coll-of ::card/card))
-  :ret boolean?)
-
 (defn under-wager-limit?
   [cards]
   (<= (count (filter card/wager? cards)) 3))
@@ -27,13 +16,13 @@
 
 (defn numbers-in-order?
   [cards]
-  ;; Yuck!
-  (let [numbers (filter identity
-                        (map ::card/number cards))]
+  (let [numbers (into []
+                      (comp (filter card/number?)
+                            (map ::card/number))
+                      cards)]
     (if (empty? numbers)
       true
-      (apply <= numbers)))
-  1)
+      (apply <= numbers))))
 
 (s/fdef numbers-in-order?
   :args (s/cat :cards (s/coll-of ::card/card))
@@ -54,14 +43,26 @@
   :args (s/cat :cards (s/coll-of ::card/card))
   :ret boolean?)
 
-(s/def ::expedition (s/and (s/coll-of ::card/card)
-                           uniform-color?
-                           under-wager-limit?
-                           wagers-before-numbers?
-                           numbers-in-order?))
+(s/def ::id (s/and string? #(<= 1 (count %) 24)))
 
-(s/def ::expeditions (s/and ::card/color-piles))
-(s/def ::opponent-expeditions (s/map-of ::card/color (s/spec ::expedition)))
-(s/def ::hand (s/coll-of ::card/card))
+(s/def ::blue (s/and ::card/blue
+                     wagers-before-numbers?
+                     numbers-in-order?))
+(s/def ::green (s/and ::card/green
+                      wagers-before-numbers?
+                      numbers-in-order?))
+(s/def ::red (s/and ::card/red
+                    wagers-before-numbers?
+                    numbers-in-order?))
+(s/def ::white (s/and ::card/white
+                      wagers-before-numbers?
+                      numbers-in-order?))
+(s/def ::yellow (s/and ::card/yellow
+                       wagers-before-numbers?
+                       numbers-in-order?))
+
+(s/def ::expeditions (s/keys :req-un [::blue ::green ::red ::white ::yellow]))
+(s/def ::opponent-expeditions (s/keys :req-un [::blue ::green ::red ::white ::yellow]))
+(s/def ::hand (s/coll-of ::card/card :count 8))
 (s/def ::data (s/keys :req [::hand
                             ::expeditions]))

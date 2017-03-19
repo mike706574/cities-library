@@ -9,69 +9,43 @@
 
 (s/def ::type #{:wager :number})
 (s/def ::color colors)
-(s/def ::number (set (range 2 11)))
-
-(s/def ::wager-card (s/keys :req [::type ::color]))
-(s/def ::number-card (s/keys :req [::type ::color ::number]))
-
-(defmulti card-type ::type)
-(defmethod card-type :wager [_] (s/keys :req [::type ::color]))
-(defmethod card-type :number [_] (s/keys :req [::type ::color ::number]))
-
-(s/def ::card (s/multi-spec card-type :card/type))
+(s/def ::number pos-int?)
 
 (defn wager? [card] (= (::type card) :wager))
-
-(s/fdef wager?
-  :args (s/cat :card ::card)
-  :ret boolean?)
-
 (defn number? [card] (= (::type card) :number))
-
-(s/fdef number?
-  :args (s/cat :card ::card)
-  :ret boolean?)
 
 (defn number
   [color number]
   {::type :number ::color color ::number number})
 
-(s/fdef number
-  :args (s/cat :color ::color :number ::number)
-  :ret ::number-card)
-
 (defn wager
-  [color]
-  {::type :wager ::color color})
+  [color number]
+  {::type :wager ::color color ::number number})
 
-(s/fdef wager
-  :args (s/cat :color ::color)
-  :ret ::card)
-
-(defn card
-  [{type :type color :color num :number}]
-  (case type
-    :wager (wager color)
-    :number (number color num)))
+(defn wager-1 [color] (wager color 1))
+(defn wager-2 [color] (wager color 2))
+(defn wager-3 [color] (wager color 3))
 
 (defn for-color
   [color]
   (set
    (concat
-    (take 3 (repeat (wager color)))
+    (map (partial wager color) (range 1 4))
     (map (partial number color) (range 2 11)))))
 
-(s/def ::blue (s/coll-of (for-color :blue)))
-(s/def ::green (s/coll-of (for-color :green)))
-(s/def ::red (s/coll-of (for-color :red)))
-(s/def ::white (s/coll-of (for-color :white)))
-(s/def ::yellow (s/coll-of (for-color :yellow)))
+(def deck (set (reduce concat (map for-color colors))))
+(s/def ::card deck)
 
-(s/def ::pile (s/coll-of ::card))
+(s/def ::pile (s/coll-of ::card :distinct true))
+
+(s/def ::blue (s/coll-of (for-color :blue) :distinct true))
+(s/def ::green (s/coll-of (for-color :green) :distinct true))
+(s/def ::red (s/coll-of (for-color :red) :distinct true))
+(s/def ::white (s/coll-of (for-color :white) :distinct true))
+(s/def ::yellow (s/coll-of (for-color :yellow) :distinct true))
 
 (s/def ::color-piles (s/keys :req-un [::blue ::green ::red ::white ::yellow]))
 
-(def deck (set (reduce concat (map for-color colors))))
 (def empty-piles (into {} (map #(vector % []) colors)))
 
 (defn combine-piles
@@ -82,15 +56,35 @@
    []
    (select-keys piles colors)))
 
-(s/fdef combine-piles
-  :args (s/cat :pile ::piles)
-  :ret ::pile)
-
 (defn str-card
   "Builds a string representation of a card."
-  [{:keys [::color ::number]}]
-  (str (name color) "-" (or number "wager")))
+  [{:keys [::color ::type ::number]}]
+  (str (name color) "-" (when (= type :wager) (str "wager-")) number))
+
+(s/fdef wager?
+  :args (s/cat :card ::card)
+  :ret boolean?)
+
+(s/fdef number?
+  :args (s/cat :card ::card)
+  :ret boolean?)
+
+(s/fdef combine-piles
+  :args (s/cat :piles ::color-piles)
+  :ret ::pile)
 
 (s/fdef str-card
   :args (s/cat :card ::card)
   :ret string?)
+
+(s/fdef number
+  :args (s/cat :color ::color
+               :number (s/int-in 2 11))
+  :ret (s/and ::card
+              number?))
+
+(s/fdef wager
+  :args (s/cat :color ::color
+               :number (s/int-in 1 4))
+  :ret (s/and ::card
+              wager?))

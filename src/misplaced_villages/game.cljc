@@ -24,10 +24,9 @@
     (when (every? seq seqs)
       (lazy-seq (step v-original-seqs)))))
 
-(s/def ::player-data (s/map-of ::player/id ::player/data))
+(s/def ::player-data (s/map-of ::player/id ::player/data :count 2))
 
-(s/def ::discard-pile (s/coll-of ::card/card))
-(s/def ::discard-piles (s/and (s/map-of ::card/color ::discard-pile)))
+(s/def ::discard-piles ::card/color-piles)
 (s/def ::turn ::player/id)
 
 (s/def ::draw-pile (s/coll-of ::card/card))
@@ -43,19 +42,39 @@
                   :taken})
 
 ;; A round
+(defn player-cards
+  [{:keys [::player/hand ::player/expeditions]}]
+  (into hand (card/combine-piles expeditions)))
+
+(defn all-player-cards
+  [player-data]
+  (flatten
+   (map player-cards (vals player-data))))
+
+(defn collect-cards
+  [{:keys [::player-data ::draw-pile ::discard-piles]}]
+  (-> (set draw-pile)
+      (into (card/combine-piles discard-piles))
+      (into (all-player-cards player-data))))
+
+(s/fdef collect-cards
+    :args (s/cat :round ::round)
+    :ret (s/coll-of ::card/card))
+
 (s/def ::round
-  (s/and (s/keys :req [::turn
-                       ::player-data
-                       ::discard-piles
-                       ::moves
-                       ::draw-pile])
-         (fn [{:keys [::player-data ::turn]}]
-           (contains? player-data turn))
-         ;; TODO: Cards should never disappear - use card/combine-piles to make sure
-         ))
+  (s/and
+   (s/keys :req [::turn
+                 ::player-data
+                 ::discard-piles
+                 ::moves
+                 ::draw-pile])
+   #(contains? (::player-data %) (::turn %))
+   #(= (collect-cards %) card/deck)))
 
 (s/def ::rounds (s/coll-of ::round))
-(s/def ::players (s/coll-of ::player/id))
+(s/def ::players (s/coll-of ::player/id
+                            :count 2
+                            :distinct true))
 
 (s/def ::state
   (s/keys :req [::players
@@ -64,30 +83,31 @@
 (defn start-round
   "Create a round."
   [players]
-  (let [hand-size 8
-        deck-size 60
-        full-deck (take deck-size (shuffle card/deck))
-        player-count (count players)
-        deal-count (* hand-size player-count)
-        hands (partition hand-size (take deal-count full-deck))
-        draw-pile (drop deal-count full-deck)
+  (let [deck (shuffle card/deck)
+        hands (partition 8 (take 16 deck))
+        draw-pile (drop 16 deck)
         initial-player-data (map (fn [hand] {::player/hand hand
                                              ::player/expeditions card/empty-piles}) hands)
         player-data (zipmap players initial-player-data)]
-      {::turn (rand-nth players)
-       ::player-data player-data
-       ::discard-piles card/empty-piles
-       ::draw-pile draw-pile
-       ::moves []}))
+    {::turn (rand-nth (vec players))
+     ::player-data player-data
+     ::discard-piles card/empty-piles
+     ::draw-pile draw-pile
+     ::moves []}))
 
 (s/fdef start-round
   :args (s/cat :players ::players)
   :ret ::round)
 
+(defn valid-player?
+  "Returns true if the move is being made by a valid player, otherwise false."
+  [round move]
+  (contains? (::player-data round) (::player/id move)))
+
 (defn right-player?
   "Returns true if the move is being made by the player whose turn it is."
-  [state move]
-  (= (::turn state) (::player/id move)))
+  [round move]
+  (= (::turn round) (::player/id move)))
 
 (s/fdef start-game
         :args (s/cat :players ::players)
@@ -186,7 +206,7 @@
 (defn discard-card
   "Places an instance of card into the appropriate discard pile based on card color."
   [state card]
-  (update-in state [::discard-piles (:card/color card)] #(conj % card)))
+  (update-in state [::discard-piles (::card/color card)] #(conj % card)))
 
 (defn play-card
   "Places an instance of card into the player's appropriate expedition based on card color."
@@ -198,7 +218,6 @@
   [state move]
   (let [player-id (::player/id move)
         card (::card/card move)
-        _ (println (::move/destination move))
         place-card (case (::move/destination move)
                      :expedition #(play-card % player-id card)
                      :discard-pile #(discard-card % card))
@@ -227,18 +246,18 @@
 
 (defn take-turn
   "Take a turn."
-  [state move]
+  [round move]
   ;; TODO: Check if the player is actually playing first.
-  (if-not (right-player? state move)
-    {::status :wrong-player}
-    (if-not (card-in-hand? state move)
-      {::status :card-not-in-hand}
-      (if-let [move-issue (validate-move state move)]
-        {::status move-issue}
-        {::status :taken
-         ::round (-> state
-                     (make-move move)
-                     (swap-turn))}))))
+  (cond
+    (not (valid-player? round move)) {::status :invalid-player}
+    (not (right-player? round move)) {::status :wrong-player}
+    (not (card-in-hand? round move)) {:status :card-not-in-hand}
+    :else (if-let [move-issue (validate-move round move)]
+            {::status move-issue}
+            {::status :taken
+             ::round (-> round
+                         (make-move move)
+                         (swap-turn))})))
 
 (s/fdef take-turn
   :args (s/cat :state ::round :move ::move/move)
@@ -263,10 +282,6 @@
          (nil? issue)))
      potential-moves)))
 
-(s/fdef possible-moves
-  :args (s/cat :state ::round)
-  :ret ::moves)
-
 (defn round-over?
   "Returns true if the round is over."
   [state]
@@ -277,9 +292,9 @@
   [expedition]
   (if (empty? expedition)
     0
-    (let [wage-count (count (filter #(= (::card/type %) :wager) expedition))
+    (let [wage-count (count (filter card/wager? expedition))
           wage-factor (inc wage-count)
-          numbers (map ::card/number (filter #(= (::card/type %) :number) expedition))
+          numbers (map ::card/number (filter card/number? expedition))
           sum (reduce + numbers)
           bonus (if (> (count expedition) 7) 20 0)]
       (+ (* wage-factor sum)
@@ -287,7 +302,7 @@
          bonus))))
 
 (s/fdef expedition-score
-  :args (s/cat :expedition ::player/expedition)
+  :args (s/cat :expedition ::card/pile)
   :ret integer?)
 
 (defn start-game
