@@ -109,10 +109,7 @@
 
 (stest/check 'misplaced-villages.game/collect-cards)
 
-
 (def players #{"Mike" "Abby"})
-
-(def round (game/start-round ["Mike" "Abby"]))
 
 (defn invalid-player-gen []
   (s/gen (s/and ::player/id
@@ -124,31 +121,53 @@
 
 (defspec invalid-players-get-rejected
   100
-  (prop/for-all [move (s/gen ::move/move
+  (prop/for-all [deck (s/gen ::card/deck)
+                 move (s/gen ::move/move
                              {::player/id invalid-player-gen})]
-    (let [round (game/start-round players)
+    (let [round (game/round players)
           {status ::game/status :as out} (game/take-turn round move)]
       (= status :invalid-player))))
 
-(stest/check 'misplaced-villages.game/start-round)
+;;(gen/generate (s/gen ::card/deck))
+(stest/unstrument)
+(stest/check 'misplaced-villages.game/round)
 
-(let [round (game/start-round players)
-      move (gen/generate (s/gen ::move/move
-                                {::player/id #(s/gen players)}))]
-  (game/take-turn round move))
-
-#_ (game/start-game players)
 
 (comment
-  (def round (game/start-round players))
-  (-> round
-      ::game/player-data
-      (get "Mike")
-      ::player/hand)
-  (-> round ::game/turn)
-  (def after (game/take-turn round (move/disc* "Mike" (card/wager-1 :blue))))
+  (let [round (game/rand-round players)
+        move (gen/generate (s/gen ::move/move
+                                  {::player/id #(s/gen players)}))]
+    (game/take-turn round move)))
+
+
+(comment
+  (def players ["Mike" "Abby"])
+  (def round (atom (game/start-round players)))
+
+
+  (->>
+
+       (map (comp last val))
+       (filter identity))
+
+  (-> @round ::game/turn)
+  (-> @round ::game/player-data (get "Mike") ::player/hand)
+  (-> @round ::game/player-data (get "Abby") ::player/hand)
+  (-> @round ::game/discard-piles)
+  (-> @round ::game/moves)
+  (let [{status ::game/status
+         updated-round ::game/round :as out}
+        (game/take-turn
+         @round
+         (move/disc* "Mike" (card/wager-1 :blue)))]
+    (println status)
+    (when (= status :taken)
+      (reset! round updated-round)))
+
+  (def after )
   (-> after)
 
   after
 
+  (count) (gen/generate (s/gen ::card/deck))
   )

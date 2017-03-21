@@ -4,27 +4,11 @@
       :cljs [cljs.spec :as s])
    [misplaced-villages.card :as card]
    [misplaced-villages.player :as player]
+   [misplaced-villages.misc :as misc]
    [misplaced-villages.move :as move]))
 
-(defn cartesian-product
-  [& seqs]
-  (let [v-original-seqs (vec seqs)
-        step
-        (fn step [v-seqs]
-          (let [increment
-                (fn [v-seqs]
-                  (loop [i (dec (count v-seqs)), v-seqs v-seqs]
-                    (if (= i -1) nil
-                        (if-let [rst (next (v-seqs i))]
-                          (assoc v-seqs i rst)
-                          (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
-            (when v-seqs
-              (cons (map first v-seqs)
-                    (lazy-seq (step (increment v-seqs)))))))]
-    (when (every? seq seqs)
-      (lazy-seq (step v-original-seqs)))))
-
 (s/def ::player-data (s/map-of ::player/id ::player/data :count 2))
+(s/def ::players (s/tuple ::player/id ::player/id))
 
 (s/def ::discard-piles ::card/color-piles)
 (s/def ::turn ::player/id)
@@ -43,75 +27,88 @@
 
 ;; A round
 (defn player-cards
+  "Collects all cards from every player's hand and expeditions."
   [{:keys [::player/hand ::player/expeditions]}]
   (into hand (card/combine-piles expeditions)))
 
 (defn all-player-cards
+  "Collects all cards from every player's hand and expeditions."
   [player-data]
   (flatten
    (map player-cards (vals player-data))))
 
-(defn collect-cards
+(defn round-cards
+  "Collects all cards for a round."
   [{:keys [::player-data ::draw-pile ::discard-piles]}]
   (-> (set draw-pile)
       (into (card/combine-piles discard-piles))
       (into (all-player-cards player-data))))
 
-(s/fdef collect-cards
+(s/fdef round-cards
     :args (s/cat :round ::round)
     :ret (s/coll-of ::card/card))
 
 (s/def ::round
   (s/and
    (s/keys :req [::turn
+                 ::players
                  ::player-data
                  ::discard-piles
                  ::moves
                  ::draw-pile])
    #(contains? (::player-data %) (::turn %))
-   #(= (collect-cards %) card/deck)))
+   #(= (round-cards %) card/deck)))
 
-(s/def ::rounds (s/coll-of ::round))
+(s/def ::past-rounds (s/coll-of ::round :max-count 3))
+(s/def ::remaining-rounds (s/coll-of ::round :max-count 2))
 (s/def ::players (s/coll-of ::player/id
                             :count 2
                             :distinct true))
 
 (s/def ::state
   (s/keys :req [::players
-                ::rounds]))
+                ::round
+                ::past-rounds
+                ::remaining-rounds]))
 
-(defn start-round
-  "Create a round."
-  [players]
-  (let [deck (shuffle card/deck)
-        hands (partition 8 (take 16 deck))
+(defn round
+  "Creates a round with the given turn order and deck."
+  [players deck]
+  (let [hands (partition 8 (take 16 deck))
         draw-pile (drop 16 deck)
         initial-player-data (map (fn [hand] {::player/hand hand
                                              ::player/expeditions card/empty-piles}) hands)
         player-data (zipmap players initial-player-data)]
-    {::turn (rand-nth (vec players))
+    {::turn (first players)
+     ::players players
      ::player-data player-data
      ::discard-piles card/empty-piles
      ::draw-pile draw-pile
      ::moves []}))
 
-(s/fdef start-round
+(s/fdef round
+  :args (s/cat :players ::players
+               :deck ::card/deck)
+  :ret ::round)
+
+(defn rand-round
+  "Creates a round with a random turn order and a shuffled deck."
+  [players]
+  (round (shuffle players) (shuffle card/deck)))
+
+(s/fdef rand-round
   :args (s/cat :players ::players)
   :ret ::round)
 
 (defn valid-player?
   "Returns true if the move is being made by a valid player, otherwise false."
   [round move]
-  (contains? (::player-data round) (::player/id move)))
+  (boolean (some #{(::player/id move)} (::players round))))
 
 (defn right-player?
   "Returns true if the move is being made by the player whose turn it is."
   [round move]
   (= (::turn round) (::player/id move)))
-
-(s/fdef start-game
-        :args (s/cat :players ::players)
-        :ret ::round)
 
 (defn validate-placement
   "Validates card placement. Returns nil if valid or a keyword describing the error condition if invalid."
@@ -229,29 +226,25 @@
     (add-to-hand state player-id drawn-card)))
 
 (s/fdef make-move
-  :args (s/cat :state ::round :move ::move/move)
+  :args (s/cat :round ::round :move ::move/move)
   :ret ::round)
 
-(defn after-first
-  [coll value]
-  (when-let [index (first (keep-indexed
-                           (fn [index item]
-                             (when (= item value) index))
-                           coll))]
-    (nth (cycle coll) (inc index))))
-
 (defn swap-turn
-  [{turn ::turn player-data ::player-data :as state}]
-  (assoc state ::turn (after-first (keys player-data) turn)))
+  "Makes it the other player's turn."
+  [{turn ::turn players ::players :as round}]
+  (assoc round ::turn (misc/cycle-after players turn)))
+
+(s/fdef swap-turn
+  :args (s/cat :round ::round)
+  :ret ::round)
 
 (defn take-turn
-  "Take a turn."
+  "Takes a turn."
   [round move]
-  ;; TODO: Check if the player is actually playing first.
   (cond
     (not (valid-player? round move)) {::status :invalid-player}
     (not (right-player? round move)) {::status :wrong-player}
-    (not (card-in-hand? round move)) {:status :card-not-in-hand}
+    (not (card-in-hand? round move)) {::status :card-not-in-hand}
     :else (if-let [move-issue (validate-move round move)]
             {::status move-issue}
             {::status :taken
@@ -260,7 +253,7 @@
                          (swap-turn))})))
 
 (s/fdef take-turn
-  :args (s/cat :state ::round :move ::move/move)
+  :args (s/cat :round ::round :move ::move/move)
   :ret (s/keys :req [::status
                      ::round]))
 
@@ -269,8 +262,12 @@
   [round]
   (let [turn (::turn round)
         hand (get-in round [::player-data turn ::player/hand])
-        combos (cartesian-product hand move/destinations move/sources)]
+        combos (misc/cartesian-product hand move/destinations move/sources)]
     (map #(apply move/move turn %) combos)))
+
+(s/fdef potential-moves
+  :args (s/cat :state ::round)
+  :ret (s/coll-of ::move/move :distinct true))
 
 (defn possible-moves
   "Returns all moves that are possible when factoring in expedition and discard pile states."
@@ -282,10 +279,18 @@
          (nil? issue)))
      potential-moves)))
 
+(s/fdef possible-moves
+  :args (s/cat :round ::round)
+  :ret (s/coll-of ::move/move :distinct true))
+
 (defn round-over?
   "Returns true if the round is over."
-  [state]
-  (empty? (::draw-pile state)))
+  [round]
+  (empty? (::draw-pile round)))
+
+(s/fdef possible-moves
+  :args (s/cat :round ::round)
+  :ret (s/coll-of ::move/move :distinct true))
 
 (defn expedition-score
   "Calculates the score for an expedition."
@@ -305,88 +310,96 @@
   :args (s/cat :expedition ::card/pile)
   :ret integer?)
 
-(defn start-game
-  "Create a game."
-  [players]
+(defn game
+  "Creates a game with given turn order and decks."
+  [players [deck-1 deck-2 deck-3]]
   {::players players
-   ::rounds [(start-round players)]})
+   ::round (round players deck-1)
+   ::past-rounds []
+   ::remaining-rounds [(round (reverse players) deck-2)
+                       (round players deck-3)]})
+
+(s/fdef game
+  :args (s/cat :players ::players
+               :decks (s/coll-of ::card/deck :count 3))
+  :ret ::state)
+
+(defn rand-game
+  "Create a game with a random turn order and shuffled decks."
+  [players]
+  (game
+   (shuffle players)
+   (repeatedly 3 #(shuffle card/deck))))
+
+(s/fdef rand-game
+  :args (s/cat :players ::players)
+  :ret ::state)
 
 (defn game-over?
   "Returns true if the game is over."
-  [{rounds ::rounds}]
-  (and (= 3 (count rounds) (round-over? (last rounds)))))
-
-(defn check-for-round-error
-  "Throws an exception if the current round is not the last round and is over,  but no new round has been created - treating this as an error state for now."
-  [{rounds ::rounds :as state}]
-  (when (and (not= 3 (count rounds))
-             (round-over? (last rounds)))
-    (throw (ex-info "The last round is over, but no new round was created." state))))
+  [{round ::round remaining-rounds ::remaining-rounds}]
+  (and (nil? round) (empty? remaining-rounds)))
 
 (defn take-action
   "Primary function for advancing game state."
   [state move]
   (if (game-over? state)
     {::status :game-over ::state state}
-    (do (check-for-round-error state)
-        (let [rounds (::rounds state)
-              round (last rounds)
-              round-count (count rounds)
-              {status ::status round* ::round} (take-turn round move)]
-          (if-not (= status :taken)
-            {::status status}
-            (let [state* (assoc-in state [::rounds (dec round-count)] round*)]
-              (if-not (round-over? round*)
-                {::status :taken
-                 ::state state*}
-                (if (= round-count 3)
-                  {::status :game-over ::state state}
-                  (let [new-round (start-round (::players state))
-                        state** (update state* ::rounds #(conj % new-round))]
-                    {::status :new-round
-                     ::state state**})))))))))
+    (let [round (::round state)
+          {status ::status round* ::round} (take-turn round move)]
+      (if-not (= status :taken)
+        {::status status}
+        (if (round-over? round*)
+          (let [[new-round & remaining-rounds] (::remaining-rounds state)
+                past-rounds (conj (::past-rounds state) round*)
+                state* (assoc state
+                              ::round new-round
+                              ::past-rounds past-rounds
+                              ::remaining-rounds remaining-rounds)]
+            {::status (if new-round :round-over :game-over)
+             ::state state*})
+          {::status :taken
+           ::state (assoc state ::round round*)})))))
 
-(s/def ::round-number integer?)
 (s/def ::draw-count integer?)
 (s/def ::draw-count integer?)
 (s/def ::opponent ::player/id)
 (s/def ::opponent-expeditions ::player/expeditions)
-(s/def ::previous-rounds ::rounds)
 (s/def ::cards-remaining integer?)
+(s/def ::available-discards (s/map-of ::card/color ::card/card))
 
 (s/def ::player-state (s/keys :req [::turn
                                     ::player/id
-                                    ::round-number
-                                    ::draw-count
                                     ::player/hand
                                     ::player/expeditions
                                     ::opponent
                                     ::opponent-expeditions
                                     ::moves
-                                    ::discard-piles
-                                    ::previous-rounds
+                                    ::available-discards
+                                    ::past-rounds
                                     ::cards-remaining]))
 
 (defn for-player
-  [{:keys [::players ::rounds]} player]
-  (let [round (last rounds)
-        {:keys [::turn ::moves ::discard-piles ::player-data ::draw-pile]} round
+  [{:keys [::players ::round ::past-rounds ::remaining-rounds]} player]
+  (let [{:keys [::turn ::moves ::discard-piles ::player-data ::draw-pile]} round
         {:keys [::player/hand ::player/expeditions]} (get player-data player)
         opponent (first (filter #(not= % player) players))
         opponent-expeditions (get-in player-data [opponent ::player/expeditions])
-        cards-remaining (count draw-pile)]
+        cards-remaining (count draw-pile)
+        available-discards (into [] (comp (map val)
+                                          (map last)
+                                          (filter identity))
+                                 discard-piles)]
     {::turn turn
-     ::round-number (count rounds)
-     ::draw-count (count draw-pile)
-     ::opponent opponent
      ::player/id player
      ::player/hand hand
      ::player/expeditions expeditions
+     ::opponent opponent
      ::opponent-expeditions opponent-expeditions
      ::moves moves
-     ::discard-piles discard-piles
-     ::cards-remaining cards-remaining ;; Should this be shown?
-     ::previous-rounds (or (butlast rounds) [])}))
+     ::available-discards available-discards
+     ::past-rounds past-rounds
+     ::cards-remaining cards-remaining}))
 
 (s/fdef for-player
   :args (s/cat :state ::state :player ::player/id)

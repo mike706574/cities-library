@@ -1,9 +1,11 @@
 (ns misplaced-villages.card
   (:refer-clojure :exclude [number?])
   #?(:clj
-     (:require [clojure.spec :as s])
+     (:require [clojure.spec :as s]
+               [clojure.test.check.generators :as gen])
      :cljs
-     (:require [cljs.spec :as s])))
+     (:require [cljs.spec :as s]
+               [clojure.test.check.generators :as gen])))
 
 (def colors #{:blue :green :red :white :yellow})
 
@@ -34,7 +36,13 @@
     (map (partial number color) (range 2 11)))))
 
 (def deck (set (reduce concat (map for-color colors))))
+
 (s/def ::card deck)
+
+(s/def ::deck
+  (s/with-gen
+    (s/coll-of deck :distinct true :count (count deck))
+    (gen/shuffle deck)))
 
 (s/def ::pile (s/coll-of ::card :distinct true))
 
