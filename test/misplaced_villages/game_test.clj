@@ -111,26 +111,71 @@
 
 (def players #{"Mike" "Abby"})
 
-(defn invalid-player-gen []
+(defn valid-player-gen []
+  (s/gen (s/and ::player/id players)))
+
+(def test-game (game/rand-game players))
+
+(stest/check 'misplaced-villages.game/round
+  {:gen {:misplaced-villages.player/id #(s/gen players)}})
+
+(def steps (atom []))
+
+(defn simulate-game
+  [moves]
+  (loop [response {::game/status :start
+                   ::game/state test-game}
+         [move & remaining-moves] moves]
+    (if move
+      (let [response (game/take-turn (::game/state response) move)]
+        (swap! steps conj {:move move :status (::game/status response)})
+        (recur response remaining-moves))
+      response)))
+
+(s/fdef simulate-game
+  :args (s/cat :moves (s/coll-of ::move/move :min-count 300))
+  :ret ::game/response)
+
+(comment
+  (tc/quick-check
+   1
+   (prop/for-all [moves (s/gen (s/coll-of ::move/move :min-count 1000)
+                               {::player/id #(s/gen players)})]
+     (let [{:keys [::game/status ::game/state]} (simulate-game moves)]
+       (contains? game/statuses status))))
+
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+(comment
+  (defn invalid-player-gen []
   (s/gen (s/and ::player/id
                 (complement players))))
 
-(defn valid-player-gen []
-  (s/gen (s/and ::player/id
-                players)))
+
 
 (defspec invalid-players-get-rejected
-  100
+  1
   (prop/for-all [deck (s/gen ::card/deck)
                  move (s/gen ::move/move
                              {::player/id invalid-player-gen})]
     (let [round (game/round players)
           {status ::game/status :as out} (game/take-turn round move)]
-      (= status :invalid-player))))
+      (= status
+         :invalid-player))))
 
 ;;(gen/generate (s/gen ::card/deck))
 (stest/unstrument)
-(stest/check 'misplaced-villages.game/round)
 
 
 (comment
@@ -140,7 +185,6 @@
     (game/take-turn round move)))
 
 
-(comment
   (def players ["Mike" "Abby"])
   (def round (atom (game/start-round players)))
 
@@ -160,7 +204,6 @@
         (game/take-turn
          @round
          (move/disc* "Mike" (card/wager-1 :blue)))]
-    (println status)
     (when (= status :taken)
       (reset! round updated-round)))
 

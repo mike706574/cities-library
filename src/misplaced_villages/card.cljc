@@ -42,7 +42,7 @@
 (s/def ::deck
   (s/with-gen
     (s/coll-of deck :distinct true :count (count deck))
-    (gen/shuffle deck)))
+    #(gen/shuffle deck)))
 
 (s/def ::pile (s/coll-of ::card :distinct true))
 

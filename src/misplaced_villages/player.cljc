@@ -64,5 +64,4 @@
 (s/def ::expeditions (s/keys :req-un [::blue ::green ::red ::white ::yellow]))
 (s/def ::opponent-expeditions (s/keys :req-un [::blue ::green ::red ::white ::yellow]))
 (s/def ::hand (s/coll-of ::card/card :count 8))
-(s/def ::data (s/keys :req [::hand
-                            ::expeditions]))
+(s/def ::data (s/keys :req [::hand ::expeditions]))

@@ -17,13 +17,15 @@
 (s/def ::moves (s/* ::move/move))
 
 ;; Status after an attempted move
-(s/def ::status #{:wrong-player
-                  :card-not-in-hand
-                  :not-in-hand
-                  :expedition-underway
-                  :discard-empty
-                  :too-low
-                  :taken})
+(def statuses #{:game-over
+                :invalid-player
+                :wrong-player
+                :card-not-in-hand
+                :expedition-underway
+                :discard-empty
+                :too-low
+                :taken})
+(s/def ::status statuses)
 
 ;; A round
 (defn player-cards
@@ -51,12 +53,10 @@
 (s/def ::round
   (s/and
    (s/keys :req [::turn
-                 ::players
                  ::player-data
                  ::discard-piles
                  ::moves
                  ::draw-pile])
-   #(contains? (::player-data %) (::turn %))
    #(= (round-cards %) card/deck)))
 
 (s/def ::past-rounds (s/coll-of ::round :max-count 3))
@@ -100,25 +100,25 @@
   :args (s/cat :players ::players)
   :ret ::round)
 
-(defn valid-player?
-  "Returns true if the move is being made by a valid player, otherwise false."
-  [round move]
-  (boolean (some #{(::player/id move)} (::players round))))
+(defn index-of
+  [coll item]
+  (loop [index 0
+         [head & tail] coll]
+    (when head
+      (if (= head item)
+        index
+        (recur (inc index) tail)))))
 
-(defn right-player?
-  "Returns true if the move is being made by the player whose turn it is."
-  [round move]
-  (= (::turn round) (::player/id move)))
 
 (defn validate-placement
   "Validates card placement. Returns nil if valid or a keyword describing the error condition if invalid."
   [state move]
   (let [{:keys [::player/id ::card/card ::move/destination]} move
-        player (get-in state [::player-data id])
+        player (get-in state [::round ::player-data id])
         {:keys [::player/hand ::player/expeditions]} player]
     ;; You can't play a card you don't have.
     (if-not (some #(= % card) hand)
-      :not-in-hand
+      :card-not-in-hand
       ;; You can discard any card, no matter what.
       (when (= destination :expedition)
         (let [{card-type ::card/type
@@ -164,13 +164,6 @@
   (if-let [placement-issue (validate-placement state move)]
     placement-issue
     (validate-draw state move)))
-
-(defn card-in-hand?
-  "Returns true if the card being placed for the given move is in the hand of the player whose turn it is."
-  [state move]
-  (let [{:keys [::player/id ::card/card]} move
-        hand (get-in state [::player-data id ::player/hand])]
-    (some #(= % card) hand)))
 
 (defn remove-first
   "Removes the first instance of item from coll."
@@ -231,31 +224,12 @@
 
 (defn swap-turn
   "Makes it the other player's turn."
-  [{turn ::turn players ::players :as round}]
-  (assoc round ::turn (misc/cycle-after players turn)))
+  [round players]
+  (update round ::turn #(misc/cycle-after players %)))
 
 (s/fdef swap-turn
-  :args (s/cat :round ::round)
+  :args (s/cat :round ::round :players ::players)
   :ret ::round)
-
-(defn take-turn
-  "Takes a turn."
-  [round move]
-  (cond
-    (not (valid-player? round move)) {::status :invalid-player}
-    (not (right-player? round move)) {::status :wrong-player}
-    (not (card-in-hand? round move)) {::status :card-not-in-hand}
-    :else (if-let [move-issue (validate-move round move)]
-            {::status move-issue}
-            {::status :taken
-             ::round (-> round
-                         (make-move move)
-                         (swap-turn))})))
-
-(s/fdef take-turn
-  :args (s/cat :round ::round :move ::move/move)
-  :ret (s/keys :req [::status
-                     ::round]))
 
 (defn potential-moves
   "Returns all moves that would be possible without factoring in expedition and discard pile states."
@@ -340,15 +314,32 @@
   [{round ::round remaining-rounds ::remaining-rounds}]
   (and (nil? round) (empty? remaining-rounds)))
 
-(defn take-action
-  "Primary function for advancing game state."
+(defn valid-player?
+  "Returns true if the move is being made by a valid player, otherwise false."
   [state move]
-  (if (game-over? state)
-    {::status :game-over ::state state}
-    (let [round (::round state)
-          {status ::status round* ::round} (take-turn round move)]
-      (if-not (= status :taken)
-        {::status status}
+  (boolean (some #{(::player/id move)} (::players state))))
+
+(defn right-player?
+  "Returns true if the move is being made by the player whose turn it is."
+  [state move]
+  (let [turn (-> state ::round ::turn)
+        player (::player/id move)]
+    (= turn player)))
+
+(defn take-turn
+  "Takes a turn."
+  [state move]
+  (cond
+    (game-over? state) {::status :game-over ::state state}
+    (not (valid-player? state move)) {::status :invalid-player ::state state}
+    (not (right-player? state move)) {::status :wrong-player ::state state}
+    :else
+    (if-let [move-issue (validate-move state move)]
+      {::status move-issue ::state state}
+      (let [round* (-> state
+                       ::round
+                       (make-move move)
+                       (swap-turn (::players state)))]
         (if (round-over? round*)
           (let [[new-round & remaining-rounds] (::remaining-rounds state)
                 past-rounds (conj (::past-rounds state) round*)
@@ -358,8 +349,14 @@
                               ::remaining-rounds remaining-rounds)]
             {::status (if new-round :round-over :game-over)
              ::state state*})
-          {::status :taken
+          {::stnatus :taken
            ::state (assoc state ::round round*)})))))
+
+(s/def ::response (s/keys :req [::status ::state]))
+
+(s/fdef take-turn
+  :args (s/cat :state ::state :move ::move/move)
+  :ret ::response)
 
 (s/def ::draw-count integer?)
 (s/def ::draw-count integer?)
