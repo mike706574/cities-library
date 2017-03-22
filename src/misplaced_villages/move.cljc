@@ -77,3 +77,16 @@
   :args (s/cat :player-id ::player/id
                :card ::card/card)
   :ret ::move)
+
+(defn str-move
+  [{:keys [::player/id ::card/card ::destination ::source]}]
+  (str id " "
+       (case destination
+         :expedition "plays"
+         :discard-pile "discards")
+       " "
+       (card/str-card card)
+       ", draws "
+       (if (= :draw-pile source)
+         "new card."
+         (str "from " (name source) " discard pile."))))

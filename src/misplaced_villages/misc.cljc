@@ -33,3 +33,9 @@
       (if (= head value)
         (first (or tail coll))
         (recur tail)))))
+
+(defn remove-first
+  "Removes the first instance of item from coll."
+  [coll item]
+  (let [[before from] (split-with (partial not= item) coll)]
+    (concat before (rest from))))

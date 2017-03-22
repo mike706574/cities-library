@@ -16,7 +16,6 @@
 (s/def ::draw-pile (s/coll-of ::card/card))
 (s/def ::moves (s/* ::move/move))
 
-;; Status after an attempted move
 (def statuses #{:game-over
                 :invalid-player
                 :wrong-player
@@ -100,24 +99,14 @@
   :args (s/cat :players ::players)
   :ret ::round)
 
-(defn index-of
-  [coll item]
-  (loop [index 0
-         [head & tail] coll]
-    (when head
-      (if (= head item)
-        index
-        (recur (inc index) tail)))))
-
-
 (defn validate-placement
   "Validates card placement. Returns nil if valid or a keyword describing the error condition if invalid."
-  [state move]
+  [round move]
   (let [{:keys [::player/id ::card/card ::move/destination]} move
-        player (get-in state [::round ::player-data id])
+        player (get-in round [::player-data id])
         {:keys [::player/hand ::player/expeditions]} player]
     ;; You can't play a card you don't have.
-    (if-not (some #(= % card) hand)
+    (if-not (some #{card} hand)
       :card-not-in-hand
       ;; You can discard any card, no matter what.
       (when (= destination :expedition)
@@ -143,80 +132,78 @@
 
 (defn validate-draw
   "Validates card draw. Returns nil if valid, keyword error condition if invalid."
-  [state move]
+  [round move]
   (let [{:keys [::move/source
                 ::move/destination
-                ::card/card]} move]
-    (when-not (or ;; It's always OK to draw from the draw pile.
-                  (= source :draw-pile)
-                  ;; We're OK if we just discarded a card with the same color as
-                  ;; the discard pile we're drawing from.
-                  (and (= destination :discard-pile)
-                       (= (::card/color card) source))
-                  ;; We're OK If the discard pile we're drawing from has cards
-                  ;; in it.
-                  (seq (get-in state [::discard-piles state])))
-      :discard-pile-not-empty)))
+                ::card/card]} move
+        ;; It's always OK to draw from the draw pile.
+        drawing-from-draw-pile? (= source :draw-pile)
+        ;; We're OK if we just discarded a card with the same color as
+        ;; the discard pile we're drawing from.
+        actively-discarding? (and (= destination :discard-pile)
+                                  (= (::card/color card) source))
+        discards-available? (not (empty? (get-in round [::discard-piles source])))]
+    (when-not (or drawing-from-draw-pile?
+                  actively-discarding?
+                  discards-available?)
+      :discard-pile-empty)))
 
 (defn validate-move
   "Validates a move. Returns nil if valid, keyword error condition if invalid."
-  [state move]
-  (if-let [placement-issue (validate-placement state move)]
+  [round move]
+  (if-let [placement-issue (validate-placement round move)]
     placement-issue
-    (validate-draw state move)))
-
-(defn remove-first
-  "Removes the first instance of item from coll."
-  [coll item]
-  (let [[before from] (split-with (partial not= item) coll)]
-    (concat before (rest from))))
+    (validate-draw round move)))
 
 (defn draw-card
   "Draws a card, either from the draw pile or the discard pile specified in move."
-  [state move]
+  [round move]
   (let [source (::move/source move)]
     (if (= source :draw-pile)
-      (let [[top-card & rest-of-draw-pile] (::draw-pile state)]
-        [top-card (assoc state ::draw-pile rest-of-draw-pile)])
-      (let [discard-pile (get-in state [::discard-piles source])
+      (let [[top-card & rest-of-draw-pile] (::draw-pile round)]
+        [top-card (assoc round ::draw-pile rest-of-draw-pile)])
+      (let [discard-pile (get-in round [::discard-piles source])
             top-card (last discard-pile)
-            rest-of-discard-pile (butlast discard-pile)]
-        [top-card (assoc-in state [::discard-piles source] discard-pile)]))))
+            rest-of-discard-pile (or (butlast discard-pile) [])]
+        [top-card (assoc-in round [::discard-piles source] rest-of-discard-pile)]))))
 
-(defn remove-first-from-hand
+(defn remove-from-hand
   "Removes the first instance of card from the given player's hand."
-  [state player-id card]
-  (update-in state [::player-data player-id ::player/hand] #(remove-first % card)))
+  [round player-id card]
+  (update-in round
+             [::player-data player-id ::player/hand]
+             (fn [hand] (remove #(= % card) hand))))
 
 (defn add-to-hand
   "Adds an instance of card to the given player's hand."
-  [state player-id card]
-  (update-in state [::player-data player-id ::player/hand] #(conj % card)))
+  [round player-id card]
+  (update-in round [::player-data player-id ::player/hand] #(conj % card)))
 
 (defn discard-card
   "Places an instance of card into the appropriate discard pile based on card color."
-  [state card]
-  (update-in state [::discard-piles (::card/color card)] #(conj % card)))
+  [round card]
+  (update-in round [::discard-piles (::card/color card)] #(conj % card)))
 
 (defn play-card
   "Places an instance of card into the player's appropriate expedition based on card color."
-  [state player card]
-  (update-in state [::player-data player ::player/expeditions (::card/color card)] #(conj % card)))
+  [round player card]
+  (update-in round [::player-data player ::player/expeditions (::card/color card)] #(conj % card)))
 
 (defn make-move
   "Performs the given move. Moves consist of two phases: placement and draw."
-  [state move]
+  [round move]
   (let [player-id (::player/id move)
         card (::card/card move)
         place-card (case (::move/destination move)
                      :expedition #(play-card % player-id card)
                      :discard-pile #(discard-card % card))
-        state (-> state
-                  (remove-first-from-hand player-id card)
+        round (-> round
+                  (remove-from-hand player-id card)
                   (place-card)
                   (update ::moves #(conj % move)))
-        [drawn-card state] (draw-card state move)]
-    (add-to-hand state player-id drawn-card)))
+        [drawn-card round] (draw-card round move)
+        round-after (add-to-hand round player-id drawn-card)]
+    round-after))
 
 (s/fdef make-move
   :args (s/cat :round ::round :move ::move/move)
@@ -231,58 +218,10 @@
   :args (s/cat :round ::round :players ::players)
   :ret ::round)
 
-(defn potential-moves
-  "Returns all moves that would be possible without factoring in expedition and discard pile states."
-  [round]
-  (let [turn (::turn round)
-        hand (get-in round [::player-data turn ::player/hand])
-        combos (misc/cartesian-product hand move/destinations move/sources)]
-    (map #(apply move/move turn %) combos)))
-
-(s/fdef potential-moves
-  :args (s/cat :state ::round)
-  :ret (s/coll-of ::move/move :distinct true))
-
-(defn possible-moves
-  "Returns all moves that are possible when factoring in expedition and discard pile states."
-  [round]
-  (let [potential-moves (potential-moves round)]
-    (filter
-     (fn [potential-move]
-       (let [issue (validate-move round potential-move)]
-         (nil? issue)))
-     potential-moves)))
-
-(s/fdef possible-moves
-  :args (s/cat :round ::round)
-  :ret (s/coll-of ::move/move :distinct true))
-
 (defn round-over?
   "Returns true if the round is over."
   [round]
   (empty? (::draw-pile round)))
-
-(s/fdef possible-moves
-  :args (s/cat :round ::round)
-  :ret (s/coll-of ::move/move :distinct true))
-
-(defn expedition-score
-  "Calculates the score for an expedition."
-  [expedition]
-  (if (empty? expedition)
-    0
-    (let [wage-count (count (filter card/wager? expedition))
-          wage-factor (inc wage-count)
-          numbers (map ::card/number (filter card/number? expedition))
-          sum (reduce + numbers)
-          bonus (if (> (count expedition) 7) 20 0)]
-      (+ (* wage-factor sum)
-         -20
-         bonus))))
-
-(s/fdef expedition-score
-  :args (s/cat :expedition ::card/pile)
-  :ret integer?)
 
 (defn game
   "Creates a game with given turn order and decks."
@@ -334,7 +273,7 @@
     (not (valid-player? state move)) {::status :invalid-player ::state state}
     (not (right-player? state move)) {::status :wrong-player ::state state}
     :else
-    (if-let [move-issue (validate-move state move)]
+    (if-let [move-issue (validate-move (::round state) move)]
       {::status move-issue ::state state}
       (let [round* (-> state
                        ::round
@@ -349,7 +288,7 @@
                               ::remaining-rounds remaining-rounds)]
             {::status (if new-round :round-over :game-over)
              ::state state*})
-          {::stnatus :taken
+          {::status :taken
            ::state (assoc state ::round round*)})))))
 
 (s/def ::response (s/keys :req [::status ::state]))
