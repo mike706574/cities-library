@@ -17,6 +17,7 @@
 (s/def ::moves (s/* ::move/move))
 
 (def statuses #{:game-over
+                :round-over
                 :invalid-player
                 :wrong-player
                 :card-not-in-hand
