@@ -6,7 +6,8 @@
    [misplaced-villages.player :as player]
    [misplaced-villages.misc :as misc]
    [misplaced-villages.move :as move]
-   [misplaced-villages.game :as game]))
+   [misplaced-villages.game :as game]
+   [misplaced-villages.score :as score]))
 
 (defn potential-moves
   "Returns all moves that would be possible without factoring in expedition and discard pile states."

@@ -1,9 +1,12 @@
 (ns misplaced-villages.score-test
   (:require
+   [clojure.spec :as s]
+   [clojure.spec.gen :as gen]
    [clojure.test :refer :all]
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
+   [misplaced-villages.game :as game]
    [misplaced-villages.card :as card]
    [misplaced-villages.player :as player]
    [misplaced-villages.move :as move]
@@ -58,3 +61,39 @@
                                     (card/number :blue 5)
                                     (card/number :blue 6)]))
       "If an expedition contains 8 or more cards, a bonus of 20 is awarded."))
+
+(def round {::game/player-data
+            {"Mike" {::player/expeditions
+                     {:blue [(card/wager-3 :blue)
+                             (card/wager-1 :blue)
+                             (card/number :blue 4)
+                             (card/number :blue 5)
+                             (card/number :blue 6)]
+                      :red [(card/number :red 3)
+                            (card/number :blue 4)
+                            (card/number :blue 10)]
+                      :green []
+                      :yellow []
+                      :white []}}
+             "Abby" {::player/expeditions
+                     {:blue []
+                      :red []
+                      :green [(card/number :green 10)]
+                      :yellow [(card/wager-1 :yellow)
+                               (card/wager-2 :yellow)
+                               (card/wager-3 :yellow)
+                               (card/number :yellow 2)
+                               (card/number :yellow 3)
+                               (card/number :yellow 4)
+                               (card/number :yellow 5)
+                               (card/number :yellow 6)
+                               (card/number :yellow 7)
+                               (card/number :yellow 8)
+                               (card/number :yellow 9)
+                               (card/number :yellow 10)]
+                      :white []}}}})
+
+(deftest round-scores
+  (is (= {"Mike" 22
+          "Abby" 206}
+         (score/round-scores round))))

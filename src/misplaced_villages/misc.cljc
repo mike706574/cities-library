@@ -39,3 +39,7 @@
   [coll item]
   (let [[before from] (split-with (partial not= item) coll)]
     (concat before (rest from))))
+
+(defn fmap
+  [f m]
+  (into {} (map (fn [[k v]] [k (f v)] ) m)))
