@@ -298,38 +298,10 @@
   :args (s/cat :state ::state :move ::move/move)
   :ret ::response)
 
-(s/def ::draw-count integer?)
-(s/def ::draw-count integer?)
-(s/def ::opponent ::player/id)
-(s/def ::opponent-expeditions ::player/expeditions)
-(s/def ::cards-remaining integer?)
-(s/def ::available-discards (s/map-of ::card/color ::card/card))
+(defn opponent
+  [game player]
+  (first (filter #(not= % player) (::players game))))
 
-(defn for-player
-  [{:keys [::players ::round ::past-rounds ::remaining-rounds] :as state} player]
-  (if (game-over? state)
-    (let [opponent (first (filter #(not= % player) players))]
-      {::player/id player
-       ::opponent opponent
-       ::over? true
-       ::rounds past-rounds})
-    (let [{:keys [::turn ::moves ::discard-piles ::player-data ::draw-pile]} round
-          {:keys [::player/hand ::player/expeditions]} (get player-data player)
-          opponent (first (filter #(not= % player) players))
-          opponent-expeditions (get-in player-data [opponent ::player/expeditions])
-          cards-remaining (count draw-pile)
-          available-discards (into [] (comp (map val)
-                                            (map last)
-                                            (filter identity))
-                                   discard-piles)]
-      {::turn turn
-       ::over? false
-       ::player/id player
-       ::player/hand hand
-       ::player/expeditions expeditions
-       ::opponent opponent
-       ::opponent-expeditions opponent-expeditions
-       ::moves moves
-       ::available-discards available-discards
-       ::past-rounds past-rounds
-       ::cards-remaining cards-remaining})))
+(s/fdef opponent
+  :args (s/cat :state ::state)
+  :ret ::player/id)
