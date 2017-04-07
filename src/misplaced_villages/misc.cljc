@@ -1,10 +1,4 @@
-(ns misplaced-villages.misc
-  (:require
-   #?(:clj [clojure.spec :as s]
-      :cljs [cljs.spec :as s])
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.move :as move]))
+(ns misplaced-villages.misc)
 
 (defn cartesian-product
   "See clojure.math.combinatorics/cartesian-product."
@@ -15,8 +9,8 @@
           (let [increment
                 (fn [v-seqs]
                   (loop [i (dec (count v-seqs)), v-seqs v-seqs]
-                    (if (= i -1) nil
-                        (if-let [rst (next (v-seqs i))]
+                    (when-not (= i -1)
+                      (if-let [rst (next (v-seqs i))]
                           (assoc v-seqs i rst)
                           (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
             (when v-seqs
