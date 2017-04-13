@@ -73,22 +73,25 @@
 
 (defn round
   "Creates a round with the given turn order and deck."
-  [players deck]
-  (let [hands (partition 8 (take 16 deck))
-        draw-pile (drop 16 deck)
-        initial-player-data (map (fn [hand] {::player/hand hand
-                                             ::player/expeditions card/empty-piles}) hands)
-        player-data (zipmap players initial-player-data)]
-    {::turn (first players)
-     ::players players
-     ::player-data player-data
-     ::discard-piles card/empty-piles
-     ::draw-pile draw-pile
-     ::moves []}))
+  ([players deck]
+   (round players deck 44))
+  ([players deck draw-count]
+   (let [hands (partition 8 (take 16 deck))
+         draw-pile (take draw-count (drop 16 deck))
+         initial-player-data (map (fn [hand] {::player/hand hand
+                                              ::player/expeditions card/empty-piles}) hands)
+         player-data (zipmap players initial-player-data)]
+     {::turn (first players)
+      ::players players
+      ::player-data player-data
+      ::discard-piles card/empty-piles
+      ::draw-pile draw-pile
+      ::moves []})))
 
 (s/fdef round
   :args (s/cat :players ::players
-               :deck ::card/deck)
+               :deck ::card/deck
+               :draw-count (set (range 0 45)))
   :ret ::round)
 
 (defn rand-round
@@ -226,27 +229,33 @@
 
 (defn game
   "Creates a game with given turn order and decks."
-  [players [deck-1 deck-2 deck-3]]
-  {::players players
-   ::round (round players deck-1)
-   ::past-rounds []
-   ::remaining-rounds [(round (reverse players) deck-2)
-                       (round players deck-3)]})
+  ([players decks]
+   (game players decks 44))
+  ([players [deck-1 deck-2 deck-3] draw-count]
+   {::players players
+    ::round (round players deck-1 draw-count)
+    ::past-rounds []
+    ::remaining-rounds [(round (reverse players) deck-2 draw-count)
+                        (round players deck-3 draw-count)]}))
 
 (s/fdef game
   :args (s/cat :players ::players
-               :decks (s/coll-of ::card/deck :count 3))
+               :decks (s/coll-of ::card/deck :count 3)
+               :draw-count (set (range 0 45)))
   :ret ::state)
 
 (defn rand-game
   "Create a game with a random turn order and shuffled decks."
-  [players]
-  (game
-   (shuffle players)
-   (repeatedly 3 #(shuffle card/deck))))
+  ([players]
+   (rand-game players 44))
+  ([players draw-count]
+   (game
+    (shuffle players)
+    (repeatedly 3 #(shuffle card/deck)))))
 
 (s/fdef rand-game
-  :args (s/cat :players ::players)
+  :args (s/cat :players ::players
+               :draw-count (set (range 0 45)))
   :ret ::state)
 
 (defn game-over?
