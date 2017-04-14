@@ -1,9 +1,9 @@
-(ns misplaced-villages.move
+(ns milo.move
   (:require
    #?(:clj [clojure.spec :as s]
       :cljs [cljs.spec :as s])
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]))
+   [milo.card :as card]
+   [milo.player :as player]))
 
 ;; A move consists of two phases: placing and drawing
 (def destinations #{:expedition :discard-pile})

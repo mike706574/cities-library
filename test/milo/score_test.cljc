@@ -1,4 +1,4 @@
-(ns misplaced-villages.score-test
+(ns milo.score-test
   (:require
    [clojure.spec :as s]
    [clojure.spec.gen :as gen]
@@ -6,11 +6,11 @@
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
-   [misplaced-villages.game :as game]
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.move :as move]
-   [misplaced-villages.score :as score]
+   [milo.game :as game]
+   [milo.card :as card]
+   [milo.player :as player]
+   [milo.move :as move]
+   [milo.score :as score]
    [clojure.test :as test]))
 
 (deftest expedition-score-1

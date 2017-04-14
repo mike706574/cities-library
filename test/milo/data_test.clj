@@ -1,10 +1,10 @@
-(ns misplaced-villages.game-test
+(ns milo.game-test
   (:require
    [clojure.test :refer :all]
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.move :as move]
-   [misplaced-villages.data :as data]))
+   [milo.card :as card]
+   [milo.player :as player]
+   [milo.move :as move]
+   [milo.data :as data]))
 
 (deftest possible-moves-1
   (is

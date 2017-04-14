@@ -1,9 +1,9 @@
-(ns misplaced-villages.card-test
+(ns milo.card-test
   (:require
    [clojure.test :refer :all]
    [clojure.spec.test :as stest]
    [clojure.spec.gen :as gen]
-   [misplaced-villages.card :as card]
+   [milo.card :as card]
    [clojure.spec :as s]))
 
 (deftest str-card
@@ -11,4 +11,4 @@
   (is (= "green-wager-1" (card/str-card (card/wager-1 :green)))))
 
 (stest/instrument)
-(stest/check (stest/enumerate-namespace 'misplaced-villages.card))
+(stest/check (stest/enumerate-namespace 'milo.card))

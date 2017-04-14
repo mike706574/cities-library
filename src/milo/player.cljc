@@ -1,10 +1,10 @@
-(ns misplaced-villages.player
+(ns milo.player
   #?(:clj
      (:require [clojure.spec :as s]
-               [misplaced-villages.card :as card])
+               [milo.card :as card])
      :cljs
      (:require [cljs.spec :as s]
-               [misplaced-villages.card :as card])))
+               [milo.card :as card])))
 
 (defn under-wager-limit?
   [cards]

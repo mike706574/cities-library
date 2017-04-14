@@ -1,11 +1,11 @@
-(ns misplaced-villages.score
+(ns milo.score
   (:require
    #?(:clj [clojure.spec :as s]
       :cljs [cljs.spec :as s])
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.game :as game]
-   [misplaced-villages.misc :as misc]))
+   [milo.card :as card]
+   [milo.player :as player]
+   [milo.game :as game]
+   [milo.misc :as misc]))
 
 (defn expedition-score
   "Calculates the score for an expedition."

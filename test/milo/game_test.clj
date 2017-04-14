@@ -1,4 +1,4 @@
-(ns misplaced-villages.game-test
+(ns milo.game-test
   (:require
    [clojure.edn :as edn]
    [clojure.spec :as s]
@@ -8,12 +8,12 @@
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.move :as move]
-   [misplaced-villages.game :as game]
+   [milo.card :as card]
+   [milo.player :as player]
+   [milo.move :as move]
+   [milo.game :as game]
    [clojure.test :as test]
-   [misplaced-villages.data :as data]))
+   [milo.data :as data]))
 
 (stest/instrument)
 
@@ -33,7 +33,7 @@
                                                       ::player/expeditions card/empty-piles}}}))
       "If there are cards in the draw pile, the round isn't over."))
 
-(stest/check 'misplaced-villages.game/collect-cards)
+(stest/check 'milo.game/collect-cards)
 
 (def players #{"Mike" "Abby"})
 
@@ -42,8 +42,8 @@
 
 (def test-game (game/rand-game players))
 
-(stest/check 'misplaced-villages.game/round
-  {:gen {:misplaced-villages.player/id #(s/gen players)}})
+(stest/check 'milo.game/round
+  {:gen {:milo.player/id #(s/gen players)}})
 
 (def steps (atom []))
 

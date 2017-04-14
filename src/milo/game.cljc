@@ -1,11 +1,11 @@
-(ns misplaced-villages.game
+(ns milo.game
   (:require
    #?(:clj [clojure.spec :as s]
       :cljs [cljs.spec :as s])
-   [misplaced-villages.card :as card]
-   [misplaced-villages.player :as player]
-   [misplaced-villages.misc :as misc]
-   [misplaced-villages.move :as move]))
+   [milo.card :as card]
+   [milo.player :as player]
+   [milo.misc :as misc]
+   [milo.move :as move]))
 
 (s/def ::player-data (s/map-of ::player/id ::player/data :count 2))
 (s/def ::players (s/tuple ::player/id ::player/id))

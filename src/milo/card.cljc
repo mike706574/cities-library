@@ -1,4 +1,4 @@
-(ns misplaced-villages.card
+(ns milo.card
   (:refer-clojure :exclude [number?])
   #?(:clj
      (:require [clojure.spec :as s]
