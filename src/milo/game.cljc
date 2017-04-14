@@ -57,7 +57,8 @@
                  ::discard-piles
                  ::moves
                  ::draw-pile])
-   #(= (round-cards %) card/deck)))
+;;   #(= (round-cards %) card/deck)
+   ))
 
 (s/def ::past-rounds (s/coll-of ::round :max-count 3))
 (s/def ::remaining-rounds (s/coll-of ::round :max-count 2))
