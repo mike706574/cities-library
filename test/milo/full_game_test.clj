@@ -193,9 +193,10 @@
     state))
 
 (deftest taking-a-turn
-  (let [move (move/exp* "mike" (card/wager :yellow 3))]
-    (breakdown (game/take-turn game move)
+  (let [test-move (move/exp* "mike" (card/wager :yellow 3))]
+    (breakdown (game/take-turn test-game test-move)
       (is (= :taken status))
+      (is (= [test-move] moves))
       (is (= ["mike" "abby"] players))
       (is (= "abby" turn))
       (is (empty? past-rounds))
@@ -228,7 +229,7 @@
 (deftest two-turns
   (breakdown (take-turns test-state test-moves)
     (is (= :taken status))
-    (is (= moves moves))
+    (is (= moves test-moves))
     (is (= "mike" turn))
     ;; TODO
     )
