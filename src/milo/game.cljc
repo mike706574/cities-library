@@ -22,7 +22,7 @@
                 :wrong-player
                 :card-not-in-hand
                 :expedition-underway
-                :discard-empty
+                :discard-pile-empty
                 :too-low
                 :taken})
 (s/def ::status statuses)

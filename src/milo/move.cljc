@@ -45,7 +45,7 @@
   [player-id card]
   {::player/id player-id
    ::card/card card
-   ::destination :discard-pile
+   ::destination :expedition
    ::source :draw-pile})
 
 (s/fdef exp*
