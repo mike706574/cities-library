@@ -69,6 +69,12 @@
   [{:keys [::color ::type ::number]}]
   (str (name color) "-" (when (= type :wager) (str "wager-")) number))
 
+(defn literal-card
+  [{:keys [::color ::type ::number]}]
+  (case type
+    :number `(card/number ~color ~number)
+    :wager `(card/wager ~color ~number)))
+
 (s/fdef wager?
   :args (s/cat :card ::card)
   :ret boolean?)
@@ -84,6 +90,10 @@
 (s/fdef str-card
   :args (s/cat :card ::card)
   :ret string?)
+
+(s/fdef literal-card
+  :args (s/cat :card ::card)
+  :ret list?)
 
 (s/fdef number
   :args (s/cat :color ::color

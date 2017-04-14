@@ -89,9 +89,12 @@
       ::moves []})))
 
 (s/fdef round
-  :args (s/cat :players ::players
-               :deck ::card/deck
-               :draw-count (set (range 0 45)))
+  :args (s/or :draw-count (s/cat :players ::players
+                                 :deck ::card/pile
+                                 :draw-count (set (range 0 45)))
+              :no-draw-count (s/cat :players ::players
+                                 :deck ::card/pile
+                                 :draw-count (set (range 0 45))))
   :ret ::round)
 
 (defn rand-round
@@ -239,9 +242,11 @@
                         (round players deck-3 draw-count)]}))
 
 (s/fdef game
-  :args (s/cat :players ::players
-               :decks (s/coll-of ::card/deck :count 3)
-               :draw-count (set (range 0 45)))
+  :args (s/or :draw-count (s/cat :players ::players
+                                 :decks (s/coll-of ::card/pile :count 3)
+                                 :draw-count (set (range 0 45)))
+              :no-draw-count (s/cat :players ::players
+                                    :decks (s/coll-of ::card/pile :count 3)))
   :ret ::state)
 
 (defn rand-game
@@ -254,8 +259,9 @@
     (repeatedly 3 #(shuffle card/deck)))))
 
 (s/fdef rand-game
-  :args (s/cat :players ::players
-               :draw-count (set (range 0 45)))
+  :args (s/or :draw-count (s/cat :players ::players
+                                 :draw-count (set (range 0 45)))
+              :no-draw-count (s/cat :players ::players))
   :ret ::state)
 
 (defn game-over?
