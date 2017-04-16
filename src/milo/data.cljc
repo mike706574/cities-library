@@ -10,7 +10,8 @@
    [milo.score :as score]))
 
 (defn potential-moves
-  "Returns all moves that would be possible without factoring in expedition and discard pile states."
+  "Returns all moves that would be possible without factoring in expedition and
+  discard pile states."
   [round]
   (let [turn (::game/turn round)
         hand (get-in round [::game/player-data turn ::player/hand])
@@ -18,7 +19,8 @@
     (map #(apply move/move turn %) combos)))
 
 (defn possible-moves
-  "Returns all moves that are possible when factoring in expedition and discard pile states."
+  "Returns all moves that are possible when factoring in expedition and discard
+  pile states."
   [round]
   (let [potential-moves (potential-moves round)
         possible-moves (filter

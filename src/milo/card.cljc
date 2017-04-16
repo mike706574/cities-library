@@ -16,6 +16,10 @@
 (defn wager? [card] (= (::type card) :wager))
 (defn number? [card] (= (::type card) :number))
 
+(defn card
+  [type color number]
+  {::type type ::color color ::number number})
+
 (defn number
   [color number]
   {::type :number ::color color ::number number})
@@ -94,6 +98,10 @@
 (s/fdef literal-card
   :args (s/cat :card ::card)
   :ret list?)
+
+(s/fdef number
+  :args (s/cat :type ::type :color ::color :number ::number)
+  :ret ::card)
 
 (s/fdef number
   :args (s/cat :color ::color
