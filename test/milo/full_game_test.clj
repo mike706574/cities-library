@@ -138,10 +138,10 @@
      ~@body))
 
 (def test-game (game/game ["mike" "abby"] [deck-1 deck-2 deck-3] 4))
-(def test-state {::game/status :initial ::game/state game})
+(def test-state {::game/status :initial ::game/state test-game})
 
 (deftest initial-state
-  (breakdown state
+  (breakdown test-state
     (is (= ["mike" "abby"] players))
     (is (= "mike" turn))
     (is (empty? past-rounds))
