@@ -11,7 +11,7 @@
 
 (defn potential-moves
   "Returns all moves that would be possible without factoring in expedition and
-  discard pile states."
+  discard pile games."
   [round]
   (let [turn (::game/turn round)
         hand (get-in round [::game/player-data turn ::player/hand])
@@ -20,7 +20,7 @@
 
 (defn possible-moves
   "Returns all moves that are possible when factoring in expedition and discard
-  pile states."
+  pile games."
   [round]
   (let [potential-moves (potential-moves round)
         possible-moves (filter
@@ -31,22 +31,22 @@
     possible-moves))
 
 (defn print-discards
-  [state]
+  [game]
   (doseq [color card/colors]
-    (println (str (name color) " discards: " (pr-str (map card/str-card (get-in state [::game/round ::game/discard-piles color])))))))
+    (println (str (name color) " discards: " (pr-str (map card/str-card (get-in game [::game/round ::game/discard-piles color])))))))
 
 (defn print-hands
-  [state]
-  (doseq [player (::game/players state)]
-    (println (str player "'s hand: " (pr-str (map card/str-card (get-in state [::game/round ::game/player-data player ::player/hand])))))))
+  [game]
+  (doseq [player (::game/players game)]
+    (println (str player "'s hand: " (pr-str (map card/str-card (get-in game [::game/round ::game/player-data player ::player/hand])))))))
 
 (defn print-cards-left
-  [state]
-  (println (str (count (::game/draw-pile (::game/round state))) " cards left. "
-                (count (::game/remaining-rounds state)) " rounds left.")))
+  [game]
+  (println (str (count (::game/draw-pile (::game/round game))) " cards left. "
+                (count (::game/remaining-rounds game)) " rounds left.")))
 
 (defn print-all
-  [state]
-  (print-cards-left state)
-  (print-hands state)
-  (print-discards state))
+  [game]
+  (print-cards-left game)
+  (print-hands game)
+  (print-discards game))

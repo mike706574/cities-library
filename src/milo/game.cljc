@@ -66,7 +66,7 @@
                             :count 2
                             :distinct true))
 
-(s/def ::state
+(s/def ::game
   (s/keys :req [::players
                 ::round
                 ::past-rounds
@@ -248,7 +248,7 @@
                                  :draw-count (set (range 0 45)))
               :no-draw-count (s/cat :players ::players
                                     :decks (s/coll-of ::card/pile :count 3)))
-  :ret ::state)
+  :ret ::game)
 
 (defn rand-game
   "Create a game with a random turn order and shuffled decks."
@@ -263,7 +263,7 @@
   :args (s/or :draw-count (s/cat :players ::players
                                  :draw-count (set (range 0 45)))
               :no-draw-count (s/cat :players ::players))
-  :ret ::state)
+  :ret ::game)
 
 (defn game-over?
   "Returns true if the game is over."
@@ -272,46 +272,46 @@
 
 (defn valid-player?
   "Returns true if the move is being made by a valid player, otherwise false."
-  [state move]
-  (boolean (some #{(::player/id move)} (::players state))))
+  [game move]
+  (boolean (some #{(::player/id move)} (::players game))))
 
 (defn right-player?
   "Returns true if the move is being made by the player whose turn it is."
-  [state move]
-  (let [turn (-> state ::round ::turn)
+  [game move]
+  (let [turn (-> game ::round ::turn)
         player (::player/id move)]
     (= turn player)))
 
 (defn take-turn
   "Takes a turn."
-  [state move]
+  [game move]
   (cond
-    (game-over? state) {::status :game-over ::state state}
-    (not (valid-player? state move)) {::status :invalid-player ::state state}
-    (not (right-player? state move)) {::status :wrong-player ::state state}
+    (game-over? game) {::status :game-over ::game game}
+    (not (valid-player? game move)) {::status :invalid-player ::game game}
+    (not (right-player? game move)) {::status :wrong-player ::game game}
     :else
-    (if-let [move-issue (validate-move (::round state) move)]
-      {::status move-issue ::state state}
-      (let [round* (-> state
+    (if-let [move-issue (validate-move (::round game) move)]
+      {::status move-issue ::game game}
+      (let [round* (-> game
                        ::round
                        (make-move move)
-                       (swap-turn (::players state)))]
+                       (swap-turn (::players game)))]
         (if (round-over? round*)
-          (let [[new-round & remaining-rounds] (::remaining-rounds state)
-                past-rounds (conj (::past-rounds state) round*)
-                state* (assoc state
+          (let [[new-round & remaining-rounds] (::remaining-rounds game)
+                past-rounds (conj (::past-rounds game) round*)
+                game* (assoc game
                               ::round new-round
                               ::past-rounds past-rounds
                               ::remaining-rounds remaining-rounds)]
             {::status (if new-round :round-over :game-over)
-             ::state state*})
+             ::game game*})
           {::status :taken
-           ::state (assoc state ::round round*)})))))
+           ::game (assoc game ::round round*)})))))
 
-(s/def ::response (s/keys :req [::status ::state]))
+(s/def ::response (s/keys :req [::status ::game]))
 
 (s/fdef take-turn
-  :args (s/cat :state ::state :move ::move/move)
+  :args (s/cat :game ::game :move ::move/move)
   :ret ::response)
 
 (defn opponent
@@ -319,5 +319,5 @@
   (first (filter #(not= % player) (::players game))))
 
 (s/fdef opponent
-  :args (s/cat :state ::state)
+  :args (s/cat :game ::game)
   :ret ::player/id)

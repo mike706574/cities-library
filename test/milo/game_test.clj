@@ -50,10 +50,10 @@
 (defn simulate-game-with-invalid-moves
   [moves]
   (loop [response {::game/status :start
-                   ::game/state test-game}
+                   ::game/game test-game}
          [move & remaining-moves] moves]
     (if move
-      (let [response (game/take-turn (::game/state response) move)]
+      (let [response (game/take-turn (::game/game response) move)]
         (swap! steps conj {:move move :status (::game/status response)})
         (recur response remaining-moves))
       response)))
@@ -67,7 +67,7 @@
    1
    (prop/for-all [moves (s/gen (s/coll-of ::move/move :min-count 1000)
                                {::player/id #(s/gen players)})]
-     (let [{:keys [::game/status ::game/state]} (simulate-game moves)]
+     (let [{:keys [::game/status ::game/game]} (simulate-game moves)]
        (contains? game/statuses status))))
   )
 
@@ -81,19 +81,19 @@
   (loop [i 0
          moves []
          {:keys [::game/status
-                 ::game/state]} {::game/status :initial
-                                 ::game/state test-game}]
-    (data/print-cards-left state)
+                 ::game/game]} {::game/status :initial
+                                 ::game/game test-game}]
+    (data/print-cards-left game)
     (cond
       (= 1000 i) :timeout
       (= status :game-over) {:status status
-                             :final-state state
+                             :final-game game
                              :moves moves}
       (= status :card-not-in-hand) {:status status
-                                    :state state
+                                    :game game
                                     :moves moves}
-      :else (let [possible-moves (data/possible-moves (::game/round state))
+      :else (let [possible-moves (data/possible-moves (::game/round game))
                   move (rand-nth possible-moves)
                   _ (println (move/str-move move))
-                  state (game/take-turn state move)]
-              (recur (inc i) (conj moves move) state)))))
+                  game (game/take-turn game move)]
+              (recur (inc i) (conj moves move) game)))))

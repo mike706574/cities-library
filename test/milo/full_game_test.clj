@@ -101,9 +101,9 @@
 (def deck-1 (concat first-8 second-8 last-4))
 
 (defmacro breakdown
-  [state & body]
-  `(let [~'status (::game/status ~state)
-         ~'game (::game/state ~state)
+  [response & body]
+  `(let [~'status (::game/status ~response)
+         ~'game (::game/game ~response)
 
          ~'players (::game/players ~'game)
          ~'round (::game/round ~'game)
@@ -138,10 +138,10 @@
      ~@body))
 
 (def test-game (game/game ["mike" "abby"] [deck-1 deck-2 deck-3] 4))
-(def test-state {::game/status :initial ::game/state test-game})
+(def test-response {::game/status :initial ::game/game test-game})
 
-(deftest initial-state
-  (breakdown test-state
+(deftest initial-response
+  (breakdown test-response
     (is (= ["mike" "abby"] players))
     (is (= "mike" turn))
     (is (empty? past-rounds))
@@ -184,13 +184,13 @@
                          (move/disc "mike" (card/wager :yellow 3) :green))))))
 
 (defn take-turns
-  [state [head & tail]]
+  [response [head & tail]]
   (if head
-    (let [{status ::game/status :as out} (game/take-turn (::game/state state) head)]
+    (let [{status ::game/status :as out} (game/take-turn (::game/game response) head)]
       (if (= status :taken)
         (recur out tail)
         out))
-    state))
+    response))
 
 (deftest taking-a-turn
   (let [test-move (move/exp* "mike" (card/wager :yellow 3))]
@@ -227,7 +227,7 @@
                  (move/disc* "abby" (card/number :white 5))])
 
 (deftest two-turns
-  (breakdown (take-turns test-state test-moves)
+  (breakdown (take-turns test-response test-moves)
     (is (= :taken status))
     (is (= moves test-moves))
     (is (= "mike" turn))
