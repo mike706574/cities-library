@@ -257,7 +257,8 @@
   ([players draw-count]
    (game
     (shuffle players)
-    (repeatedly 3 #(shuffle card/deck)))))
+    (repeatedly 3 #(shuffle card/deck))
+    draw-count)))
 
 (s/fdef rand-game
   :args (s/or :draw-count (s/cat :players ::players
