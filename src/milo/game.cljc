@@ -163,17 +163,22 @@
     placement-issue
     (validate-draw round move)))
 
-(defn draw-card
-  "Draws a card, either from the draw pile or the discard pile specified in move."
+(defn drawn-card
+  "Returns the card that will be drawn when the given move is executed."
   [round move]
   (let [source (::move/source move)]
     (if (= source :draw-pile)
-      (let [[top-card & rest-of-draw-pile] (::draw-pile round)]
-        [top-card (assoc round ::draw-pile rest-of-draw-pile)])
-      (let [discard-pile (get-in round [::discard-piles source])
-            top-card (last discard-pile)
-            rest-of-discard-pile (or (butlast discard-pile) [])]
-        [top-card (assoc-in round [::discard-piles source] rest-of-discard-pile)]))))
+      (first (::draw-pile round))
+      (let [discard-pile (get-in round [::discard-piles source])]
+        (last discard-pile)))))
+
+(defn remove-drawn-card
+  "Removes the drawn card from the appropriate source."
+  [round move drawn-card]
+  (let [source (::move/source move)]
+    (if (= source :draw-pile)
+      (update round ::draw-pile rest)
+      (update-in round [::discard-piles source] #(or (butlast %) [])))))
 
 (defn remove-from-hand
   "Removes the first instance of card from the given player's hand."
@@ -197,25 +202,33 @@
   [round player card]
   (update-in round [::player-data player ::player/expeditions (::card/color card)] #(conj % card)))
 
-(defn make-move
-  "Performs the given move. Moves consist of two phases: placement and draw."
-  [round move]
+(defn make-move-with-drawn-card
+  [round move drawn-card]
   (let [player-id (::player/id move)
         card (::card/card move)
         place-card (case (::move/destination move)
                      :expedition #(play-card % player-id card)
                      :discard-pile #(discard-card % card))
-        round (-> round
-                  (remove-from-hand player-id card)
-                  (place-card)
-                  (update ::moves #(conj % move)))
-        [drawn-card round] (draw-card round move)
-        round-after (add-to-hand round player-id drawn-card)]
-    round-after))
+        round* (-> round
+                   (remove-from-hand player-id card)
+                   (place-card)
+                   (remove-drawn-card move drawn-card)
+                   (update ::moves #(conj % move))
+                   (add-to-hand player-id drawn-card))]
+    {::round round* ::drawn-card drawn-card}))
+
+(s/fdef make-move-with-drawn-card
+  :args (s/cat :round ::round :move ::move/move :drawn-card ::card/card)
+  :ret (s/cat :round ::round :drawn-card ::card/card))
+
+(defn make-move
+  "Performs the given move. Moves consist of two phases: placement and draw."
+  [round move]
+  (make-move-with-drawn-card round move (drawn-card round move)))
 
 (s/fdef make-move
   :args (s/cat :round ::round :move ::move/move)
-  :ret ::round)
+  :ret (s/cat :round ::round :drawn-card ::card/card))
 
 (defn swap-turn
   "Makes it the other player's turn."
@@ -293,21 +306,25 @@
     :else
     (if-let [move-issue (validate-move (::round game) move)]
       {::status move-issue ::game game}
-      (let [round* (-> game
-                       ::round
-                       (make-move move)
-                       (swap-turn (::players game)))]
-        (if (round-over? round*)
+      (let [{:keys [::round ::drawn-card]} (-> game
+                                               ::round
+                                               (swap-turn (::players game))
+                                               (make-move move))]
+        (if (round-over? round)
           (let [[new-round & remaining-rounds] (::remaining-rounds game)
-                past-rounds (conj (::past-rounds game) round*)
+                past-rounds (conj (::past-rounds game) round)
                 game* (assoc game
                               ::round new-round
                               ::past-rounds past-rounds
                               ::remaining-rounds remaining-rounds)]
             {::status (if new-round :round-over :game-over)
+             ::move/move move
+             ::drawn-card drawn-card
              ::game game*})
           {::status :taken
-           ::game (assoc game ::round round*)})))))
+           ::game (assoc game ::round round)
+           ::move/move move
+           ::drawn-card drawn-card})))))
 
 (s/def ::response (s/keys :req [::status ::game]))
 

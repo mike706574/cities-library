@@ -17,3 +17,6 @@
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]))
+
+(defn go [] nil)
+(defn stop [] nil)

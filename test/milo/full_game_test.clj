@@ -104,6 +104,8 @@
   [response & body]
   `(let [~'status (::game/status ~response)
          ~'game (::game/game ~response)
+         ~'move (::move/move ~response)
+         ~'drawn-card (::game/drawn-card ~response)
 
          ~'players (::game/players ~'game)
          ~'round (::game/round ~'game)
@@ -196,6 +198,8 @@
   (let [test-move (move/exp* "mike" (card/wager :yellow 3))]
     (breakdown (game/take-turn test-game test-move)
       (is (= :taken status))
+      (is (= test-move move))
+      (is (= (card/number :yellow 4) drawn-card))
       (is (= [test-move] moves))
       (is (= ["mike" "abby"] players))
       (is (= "abby" turn))
