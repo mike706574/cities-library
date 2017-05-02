@@ -202,33 +202,23 @@
   [round player card]
   (update-in round [::player-data player ::player/expeditions (::card/color card)] #(conj % card)))
 
-(defn make-move-with-drawn-card
+(defn make-move
   [round move drawn-card]
   (let [player-id (::player/id move)
         card (::card/card move)
         place-card (case (::move/destination move)
                      :expedition #(play-card % player-id card)
-                     :discard-pile #(discard-card % card))
-        round* (-> round
-                   (remove-from-hand player-id card)
-                   (place-card)
-                   (remove-drawn-card move drawn-card)
-                   (update ::moves #(conj % move))
-                   (add-to-hand player-id drawn-card))]
-    {::round round* ::drawn-card drawn-card}))
-
-(s/fdef make-move-with-drawn-card
-  :args (s/cat :round ::round :move ::move/move :drawn-card ::card/card)
-  :ret (s/cat :round ::round :drawn-card ::card/card))
-
-(defn make-move
-  "Performs the given move. Moves consist of two phases: placement and draw."
-  [round move]
-  (make-move-with-drawn-card round move (drawn-card round move)))
+                     :discard-pile #(discard-card % card))]
+    (-> round
+        (remove-from-hand player-id card)
+        (place-card)
+        (remove-drawn-card move drawn-card)
+        (update ::moves #(conj % move))
+        (add-to-hand player-id drawn-card))))
 
 (s/fdef make-move
-  :args (s/cat :round ::round :move ::move/move)
-  :ret (s/cat :round ::round :drawn-card ::card/card))
+  :args (s/cat :round ::round :move ::move/move :drawn-card ::card/card)
+  :ret ::round)
 
 (defn swap-turn
   "Makes it the other player's turn."
@@ -296,6 +286,28 @@
         player (::player/id move)]
     (= turn player)))
 
+(defn take-turn-no-validation
+  [game move drawn-card]
+  (let [round (-> game
+                  ::round
+                  (make-move move drawn-card)
+                  (swap-turn (::players game)))]
+    (if (round-over? round)
+      (let [[new-round & remaining-rounds] (::remaining-rounds game)
+            past-rounds (conj (::past-rounds game) round)
+            game* (assoc game
+                         ::round new-round
+                         ::past-rounds past-rounds
+                         ::remaining-rounds remaining-rounds)]
+        {::status (if new-round :round-over :game-over)
+         ::move/move move
+         ::drawn-card drawn-card
+         ::game game*})
+      {::status :taken
+       ::game (assoc game ::round round)
+       ::move/move move
+       ::drawn-card drawn-card})))
+
 (defn take-turn
   "Takes a turn."
   [game move]
@@ -306,25 +318,8 @@
     :else
     (if-let [move-issue (validate-move (::round game) move)]
       {::status move-issue ::game game}
-      (let [{:keys [::round ::drawn-card]} (-> game
-                                               ::round
-                                               (swap-turn (::players game))
-                                               (make-move move))]
-        (if (round-over? round)
-          (let [[new-round & remaining-rounds] (::remaining-rounds game)
-                past-rounds (conj (::past-rounds game) round)
-                game* (assoc game
-                              ::round new-round
-                              ::past-rounds past-rounds
-                              ::remaining-rounds remaining-rounds)]
-            {::status (if new-round :round-over :game-over)
-             ::move/move move
-             ::drawn-card drawn-card
-             ::game game*})
-          {::status :taken
-           ::game (assoc game ::round round)
-           ::move/move move
-           ::drawn-card drawn-card})))))
+      (let [drawn-card (drawn-card (::round game) move)]
+        (take-turn-no-validation game move drawn-card)))))
 
 (s/def ::response (s/keys :req [::status ::game]))
 
