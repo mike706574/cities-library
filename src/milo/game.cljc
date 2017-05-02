@@ -4,8 +4,7 @@
       :cljs [cljs.spec :as s])
    [milo.card :as card]
    [milo.player :as player]
-   [milo.misc :as misc]
-   [milo.move :as move]))
+   [milo.misc :as misc]))
 
 (s/def ::player-data (s/map-of ::player/id ::player/data :count 2))
 (s/def ::players (s/tuple ::player/id ::player/id))
@@ -14,7 +13,94 @@
 (s/def ::turn ::player/id)
 
 (s/def ::draw-pile (s/coll-of ::card/card))
-(s/def ::moves (s/* ::move/move))
+
+;; A move consists of two phases: placing and drawing
+(def destinations #{:expedition :discard-pile})
+(def sources (conj card/colors :draw-pile))
+(s/def ::source sources)
+(s/def ::destination destinations)
+(s/def ::move (s/keys :req [::player/id
+                            ::card/card
+                            ::destination
+                            ::source]))
+(defn move
+  [player-id card destination source]
+  {::player/id player-id
+   ::card/card card
+   ::destination destination
+   ::source source})
+
+(s/fdef move
+  :args (s/cat :player-id ::player/id
+               :card ::card/card
+               :destination ::destination
+               :source ::source)
+  :ret ::move)
+
+(defn exp
+  [player-id card source]
+  {::player/id player-id
+   ::card/card card
+   ::destination :expedition
+   ::source source})
+
+(s/fdef exp
+  :args (s/cat :player-id ::player/id
+               :card ::card/card
+               :source ::source)
+  :ret ::move)
+
+(defn exp*
+  [player-id card]
+  {::player/id player-id
+   ::card/card card
+   ::destination :expedition
+   ::source :draw-pile})
+
+(s/fdef exp*
+  :args (s/cat :player-id ::player/id
+               :card ::card/card)
+  :ret ::move)
+
+(defn disc
+  [player-id card source]
+  {::player/id player-id
+   ::card/card card
+   ::destination :discard-pile
+   ::source source})
+
+(s/fdef disc
+  :args (s/cat :player-id ::player/id
+               :card ::card/card
+               :source ::source)
+  :ret ::move)
+
+(defn disc*
+  [player-id card]
+  {::player/id player-id
+   ::card/card card
+   ::destination :discard-pile
+   ::source :draw-pile})
+
+(s/fdef disc*
+  :args (s/cat :player-id ::player/id
+               :card ::card/card)
+  :ret ::move)
+
+(defn str-move
+  [{:keys [::player/id ::card/card ::destination ::source]}]
+  (str id " "
+       (case destination
+         :expedition "plays"
+         :discard-pile "discards")
+       " "
+       (card/str-card card)
+       ", draws "
+       (if (= :draw-pile source)
+         "new card."
+         (str "from " (name source) " discard pile."))))
+
+(s/def ::moves (s/* ::move))
 
 (def statuses #{:game-over
                 :round-over
@@ -110,7 +196,7 @@
 (defn validate-placement
   "Validates card placement. Returns nil if valid or a keyword describing the error condition if invalid."
   [round move]
-  (let [{:keys [::player/id ::card/card ::move/destination]} move
+  (let [{:keys [::player/id ::card/card ::destination]} move
         player (get-in round [::player-data id])
         {:keys [::player/hand ::player/expeditions]} player]
     ;; You can't play a card you don't have.
@@ -141,8 +227,8 @@
 (defn validate-draw
   "Validates card draw. Returns nil if valid, keyword error condition if invalid."
   [round move]
-  (let [{:keys [::move/source
-                ::move/destination
+  (let [{:keys [::source
+                ::destination
                 ::card/card]} move
         ;; It's always OK to draw from the draw pile.
         drawing-from-draw-pile? (= source :draw-pile)
@@ -166,7 +252,7 @@
 (defn drawn-card
   "Returns the card that will be drawn when the given move is executed."
   [round move]
-  (let [source (::move/source move)]
+  (let [source (::source move)]
     (if (= source :draw-pile)
       (first (::draw-pile round))
       (let [discard-pile (get-in round [::discard-piles source])]
@@ -175,7 +261,7 @@
 (defn remove-drawn-card
   "Removes the drawn card from the appropriate source."
   [round move drawn-card]
-  (let [source (::move/source move)]
+  (let [source (::source move)]
     (if (= source :draw-pile)
       (update round ::draw-pile rest)
       (update-in round [::discard-piles source] #(or (butlast %) [])))))
@@ -206,7 +292,7 @@
   [round move drawn-card]
   (let [player-id (::player/id move)
         card (::card/card move)
-        place-card (case (::move/destination move)
+        place-card (case (::destination move)
                      :expedition #(play-card % player-id card)
                      :discard-pile #(discard-card % card))]
     (-> round
@@ -217,7 +303,7 @@
         (add-to-hand player-id drawn-card))))
 
 (s/fdef make-move
-  :args (s/cat :round ::round :move ::move/move :drawn-card ::card/card)
+  :args (s/cat :round ::round :move ::move :drawn-card ::card/card)
   :ret ::round)
 
 (defn swap-turn
@@ -300,12 +386,12 @@
                          ::past-rounds past-rounds
                          ::remaining-rounds remaining-rounds)]
         {::status (if new-round :round-over :game-over)
-         ::move/move move
+         ::move move
          ::drawn-card drawn-card
          ::game game*})
       {::status :taken
        ::game (assoc game ::round round)
-       ::move/move move
+       ::move move
        ::drawn-card drawn-card})))
 
 (defn take-turn
@@ -324,7 +410,7 @@
 (s/def ::response (s/keys :req [::status ::game]))
 
 (s/fdef take-turn
-  :args (s/cat :game ::game :move ::move/move)
+  :args (s/cat :game ::game :move ::move)
   :ret ::response)
 
 (defn opponent

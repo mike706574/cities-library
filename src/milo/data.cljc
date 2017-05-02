@@ -5,7 +5,6 @@
    [milo.card :as card]
    [milo.player :as player]
    [milo.misc :as misc]
-   [milo.move :as move]
    [milo.game :as game]
    [milo.score :as score]))
 
@@ -15,8 +14,8 @@
   [round]
   (let [turn (::game/turn round)
         hand (get-in round [::game/player-data turn ::player/hand])
-        combos (misc/cartesian-product hand move/destinations move/sources)]
-    (map #(apply move/move turn %) combos)))
+        combos (misc/cartesian-product hand game/destinations game/sources)]
+    (map #(apply game/move turn %) combos)))
 
 (defn possible-moves
   "Returns all moves that are possible when factoring in expedition and discard

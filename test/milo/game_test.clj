@@ -10,7 +10,6 @@
    [clojure.test.check.properties :as prop]
    [milo.card :as card]
    [milo.player :as player]
-   [milo.move :as move]
    [milo.game :as game]
    [clojure.test :as test]
    [milo.data :as data]))
@@ -59,13 +58,13 @@
       response)))
 
 (s/fdef simulate-game-with-invalid-moves
-  :args (s/cat :moves (s/coll-of ::move/move :min-count 300))
+  :args (s/cat :moves (s/coll-of ::game/move :min-count 300))
   :ret ::game/response)
 
 (comment
   (tc/quick-check
    1
-   (prop/for-all [moves (s/gen (s/coll-of ::move/move :min-count 1000)
+   (prop/for-all [moves (s/gen (s/coll-of ::game/move :min-count 1000)
                                {::player/id #(s/gen players)})]
      (let [{:keys [::game/status ::game/game]} (simulate-game moves)]
        (contains? game/statuses status))))
@@ -94,6 +93,6 @@
                                     :moves moves}
       :else (let [possible-moves (data/possible-moves (::game/round game))
                   move (rand-nth possible-moves)
-                  _ (println (move/str-move move))
+                  _ (println (game/str-move move))
                   game (game/take-turn game move)]
               (recur (inc i) (conj moves move) game)))))

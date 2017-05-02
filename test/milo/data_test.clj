@@ -2,15 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [milo.card :as card]
-   [milo.player :as player]
-   [milo.move :as move]
-   [milo.data :as data]))
+   [milo.data :as data]
+   [milo.game :as game]
+   [milo.player :as player]))
 
 (deftest possible-moves-1
   (is
-   (= [(move/move "Mike" (card/wager-1 :blue) :discard-pile :blue)
-       (move/move "Mike" (card/wager-1 :blue) :discard-pile :draw-pile)
-       (move/move "Mike" (card/wager-1 :blue) :expedition :draw-pile)]
+   (= [(game/move "Mike" (card/wager-1 :blue) :discard-pile :blue)
+       (game/move "Mike" (card/wager-1 :blue) :discard-pile :draw-pile)
+       (game/move "Mike" (card/wager-1 :blue) :expedition :draw-pile)]
       (data/possible-moves
        {::game/turn "Mike"
         ::game/moves []
@@ -23,8 +23,8 @@
 
 (deftest possible-moves-2
   (is
-   (= [(move/move "Mike" (card/wager-1 :blue) :discard-pile :blue)
-       (move/move "Mike" (card/wager-1 :blue) :discard-pile :draw-pile)]
+   (= [(game/move "Mike" (card/wager-1 :blue) :discard-pile :blue)
+       (game/move "Mike" (card/wager-1 :blue) :discard-pile :draw-pile)]
       (data/possible-moves
        {::game/turn "Mike"
         ::game/moves []

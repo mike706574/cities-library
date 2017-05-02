@@ -7,7 +7,6 @@
    [clojure.test :refer [deftest testing is]]
    [milo.card :as card]
    [milo.player :as player]
-   [milo.move :as move]
    [milo.game :as game]
    [clojure.walk :as walk]
    [clojure.test :as test]
@@ -104,7 +103,7 @@
   [response & body]
   `(let [~'status (::game/status ~response)
          ~'game (::game/game ~response)
-         ~'move (::move/move ~response)
+         ~'move (::game/move ~response)
          ~'drawn-card (::game/drawn-card ~response)
 
          ~'players (::game/players ~'game)
@@ -163,27 +162,27 @@
   (is (= :invalid-player
          (::game/status (game/take-turn
                          test-game
-                         (move/exp* "bob" (card/wager :yellow 3))))))
+                         (game/exp* "bob" (card/wager :yellow 3))))))
 
   (is (= :wrong-player
          (::game/status (game/take-turn
                          test-game
-                         (move/exp* "abby" (card/wager :yellow 3))))))
+                         (game/exp* "abby" (card/wager :yellow 3))))))
 
   (is (= :card-not-in-hand
          (::game/status (game/take-turn
                          test-game
-                         (move/exp* "mike" (card/number :green 6))))))
+                         (game/exp* "mike" (card/number :green 6))))))
 
   (is (= :card-not-in-hand
          (::game/status (game/take-turn
                          test-game
-                         (move/disc* "mike" (card/number :green 6))))))
+                         (game/disc* "mike" (card/number :green 6))))))
 
   (is (= :discard-pile-empty
          (::game/status (game/take-turn
                          test-game
-                         (move/disc "mike" (card/wager :yellow 3) :green))))))
+                         (game/disc "mike" (card/wager :yellow 3) :green))))))
 
 (defn take-turns
   [response [head & tail]]
@@ -195,7 +194,7 @@
     response))
 
 (deftest taking-a-turn
-  (let [test-move (move/exp* "mike" (card/wager :yellow 3))]
+  (let [test-move (game/exp* "mike" (card/wager :yellow 3))]
     (breakdown (game/take-turn test-game test-move)
       (is (= :taken status))
       (is (= test-move move))
@@ -227,15 +226,13 @@
       (is (= {:white [] :yellow [] :green [] :red [] :blue []}
              abby-expeditions)))))
 
-(def test-moves [(move/exp* "mike" (card/wager :yellow 3))
-                 (move/disc* "abby" (card/number :white 5))])
+(def test-moves [(game/exp* "mike" (card/wager :yellow 3))
+                 (game/disc* "abby" (card/number :white 5))])
 
 (deftest two-turns
   (breakdown (take-turns test-response test-moves)
     (is (= :taken status))
     (is (= moves test-moves))
-    (is (= "mike" turn))
-    ;; TODO
-    )
+    (is (= "mike" turn)))
 
   )

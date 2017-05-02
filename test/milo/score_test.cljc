@@ -9,7 +9,6 @@
    [milo.game :as game]
    [milo.card :as card]
    [milo.player :as player]
-   [milo.move :as move]
    [milo.score :as score]
    [clojure.test :as test]))
 
