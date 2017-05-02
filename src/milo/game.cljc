@@ -2,6 +2,7 @@
   (:require
    #?(:clj [clojure.spec :as s]
       :cljs [cljs.spec :as s])
+   [clojure.string :as str]
    [milo.card :as card]
    [milo.player :as player]
    [milo.misc :as misc]))
@@ -23,6 +24,24 @@
                             ::card/card
                             ::destination
                             ::source]))
+
+(defn move-sentence
+  "Builds a English sentence describing a move."
+  [player {:keys [:milo.player/id :milo.card/card :milo.game/destination :milo.game/source]}]
+  (str (if (= player id)
+         "You"
+         id)
+       " "
+       (case destination
+         :expedition "played"
+         :discard-pile "discarded")
+       " "
+       (card/label card)
+       " and drew "
+       (if (= :draw-pile source)
+         "a new card."
+         (str "from the " (-> source name str/capitalize) " discard pile."))))
+
 (defn move
   [player-id card destination source]
   {::player/id player-id
@@ -86,19 +105,6 @@
   :args (s/cat :player-id ::player/id
                :card ::card/card)
   :ret ::move)
-
-(defn str-move
-  [{:keys [::player/id ::card/card ::destination ::source]}]
-  (str id " "
-       (case destination
-         :expedition "plays"
-         :discard-pile "discards")
-       " "
-       (card/str-card card)
-       ", draws "
-       (if (= :draw-pile source)
-         "new card."
-         (str "from " (name source) " discard pile."))))
 
 (s/def ::moves (s/* ::move))
 

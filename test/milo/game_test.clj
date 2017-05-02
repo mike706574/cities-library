@@ -93,6 +93,5 @@
                                     :moves moves}
       :else (let [possible-moves (data/possible-moves (::game/round game))
                   move (rand-nth possible-moves)
-                  _ (println (game/str-move move))
                   game (game/take-turn game move)]
               (recur (inc i) (conj moves move) game)))))

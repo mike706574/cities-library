@@ -2,9 +2,11 @@
   (:refer-clojure :exclude [number?])
   #?(:clj
      (:require [clojure.spec :as s]
+               [clojure.string :as str]
                [clojure.test.check.generators :as gen])
      :cljs
      (:require [cljs.spec :as s]
+               [clojure.string :as str]
                [clojure.test.check.generators :as gen])))
 
 (def colors #{:blue :green :red :white :yellow})
@@ -68,10 +70,18 @@
    []
    (select-keys piles colors)))
 
-(defn str-card
-  "Builds a string representation of a card."
+(defn label
+  "Builds a short string label for a card."
   [{:keys [::color ::type ::number]}]
   (str (name color) "-" (when (= type :wager) (str "wager-")) number))
+
+(defn description
+  "Builds an English description of a card."
+  [{:keys [::color ::type ::number]}]
+  (let [color (-> color name str/capitalize)]
+    (if (= type :wager)
+      (str "a " color " wager card")
+      (str color " " number))))
 
 (defn literal-card
   [{:keys [::color ::type ::number]}]
@@ -91,7 +101,7 @@
   :args (s/cat :piles ::color-piles)
   :ret ::pile)
 
-(s/fdef str-card
+(s/fdef description
   :args (s/cat :card ::card)
   :ret string?)
 

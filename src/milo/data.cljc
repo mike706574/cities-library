@@ -32,12 +32,12 @@
 (defn print-discards
   [game]
   (doseq [color card/colors]
-    (println (str (name color) " discards: " (pr-str (map card/str-card (get-in game [::game/round ::game/discard-piles color])))))))
+    (println (str (name color) " discards: " (pr-str (map card/label (get-in game [::game/round ::game/discard-piles color])))))))
 
 (defn print-hands
   [game]
   (doseq [player (::game/players game)]
-    (println (str player "'s hand: " (pr-str (map card/str-card (get-in game [::game/round ::game/player-data player ::player/hand])))))))
+    (println (str player "'s hand: " (pr-str (map card/label (get-in game [::game/round ::game/player-data player ::player/hand])))))))
 
 (defn print-cards-left
   [game]
