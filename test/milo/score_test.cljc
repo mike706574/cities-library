@@ -1,7 +1,7 @@
 (ns milo.score-test
   (:require
-   [clojure.spec :as s]
-   [clojure.spec.gen :as gen]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as gen]
    [clojure.test :refer :all]
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]

@@ -1,9 +1,9 @@
 (ns milo.full_game-test
   (:require
    [clojure.edn :as edn]
-   [clojure.spec :as s]
-   [clojure.spec.gen :as gen]
-   [clojure.spec.test :as stest]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as gen]
+   [clojure.spec.test.alpha :as stest]
    [clojure.test :refer [deftest testing is]]
    [milo.card :as card]
    [milo.player :as player]

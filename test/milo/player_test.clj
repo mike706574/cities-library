@@ -1,7 +1,7 @@
 (ns milo.player-test
   (:require
-   [clojure.spec.test :as stest]
-   [clojure.spec.gen :as gen]
+   [clojure.spec.test.alpha :as stest]
+   [clojure.spec.gen.alpha :as gen]
    [milo.player :as player]))
 
 (stest/instrument)

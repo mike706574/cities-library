@@ -1,9 +1,9 @@
 (ns milo.game-test
   (:require
    [clojure.edn :as edn]
-   [clojure.spec :as s]
-   [clojure.spec.gen :as gen]
-   [clojure.spec.test :as stest]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as gen]
+   [clojure.spec.test.alpha :as stest]
    [clojure.test :refer :all]
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]

@@ -1,10 +1,10 @@
 (ns milo.card-test
   (:require
    [clojure.test :refer :all]
-   [clojure.spec.test :as stest]
-   [clojure.spec.gen :as gen]
+   [clojure.spec.test.alpha :as stest]
+   [clojure.spec.gen.alpha :as gen]
    [milo.card :as card]
-   [clojure.spec :as s]))
+   [clojure.spec.alpha :as s]))
 
 (deftest label
   (is (= "blue-5" (card/label (card/number :blue 5))))

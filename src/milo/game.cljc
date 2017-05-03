@@ -1,6 +1,6 @@
 (ns milo.game
   (:require
-   #?(:clj [clojure.spec :as s]
+   #?(:clj [clojure.spec.alpha :as s]
       :cljs [cljs.spec :as s])
    [clojure.string :as str]
    [milo.card :as card]

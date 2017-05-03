@@ -1,11 +1,11 @@
 (ns milo.card
   (:refer-clojure :exclude [number?])
   #?(:clj
-     (:require [clojure.spec :as s]
+     (:require [clojure.spec.alpha :as s]
                [clojure.string :as str]
                [clojure.test.check.generators :as gen])
      :cljs
-     (:require [cljs.spec :as s]
+     (:require [cljs.spec.alhpa :as s]
                [clojure.string :as str]
                [clojure.test.check.generators :as gen])))
 
