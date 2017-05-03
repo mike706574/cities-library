@@ -5,7 +5,7 @@
                [clojure.string :as str]
                [clojure.test.check.generators :as gen])
      :cljs
-     (:require [cljs.spec.alhpa :as s]
+     (:require [cljs.spec :as s]
                [clojure.string :as str]
                [clojure.test.check.generators :as gen])))
 
