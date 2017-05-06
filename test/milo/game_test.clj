@@ -82,7 +82,6 @@
          {:keys [::game/status
                  ::game/game]} {::game/status :initial
                                  ::game/game test-game}]
-    (data/print-cards-left game)
     (cond
       (= 1000 i) :timeout
       (= status :game-over) {:status status
@@ -110,7 +109,7 @@
                   :drawn-card drawn-card
                   :post-game game'
                   :pre-game game}
-                 (turner game')))
+                 (rand-turns game')))
          (catch Exception e
            [{:status :exception
                         :move move
@@ -118,6 +117,6 @@
                         :exception e}]))))))
 
 (comment
-  (def responses (take 1000 (rand-turns test-game)))
+  (def responses (take 1000 (rand-turns (game/rand-game ["mike" "abby"]))))
   (def last-response (last responses))
   (:status last-response))

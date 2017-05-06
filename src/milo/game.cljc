@@ -256,7 +256,7 @@
   (let [source (::source move)]
     (if (= source :draw-pile)
       (update round ::draw-pile rest)
-      (update-in round [::discard-piles source] #(or (rest %) [])))))
+      (update-in round [::discard-piles source] #(or (vec (butlast %)) [])))))
 
 (defn remove-from-hand
   "Removes the first instance of card from the given player's hand."

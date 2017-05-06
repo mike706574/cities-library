@@ -233,6 +233,4 @@
   (breakdown (take-turns test-response test-moves)
     (is (= :taken status))
     (is (= moves test-moves))
-    (is (= "mike" turn)))
-
-  )
+    (is (= "mike" turn))))
