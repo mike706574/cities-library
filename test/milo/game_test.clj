@@ -95,3 +95,29 @@
                   move (rand-nth possible-moves)
                   game (game/take-turn game move)]
               (recur (inc i) (conj moves move) game)))))
+
+(defn rand-turns
+  [game]
+  (lazy-seq
+   (when-not (game/game-over? game)
+     (let [move (rand-nth (data/possible-moves (:milo.game/round game)))]
+       (try
+         (let [{status :milo.game/status
+                game' :milo.game/game
+                drawn-card :milo.game/drawn-card} (game/take-turn game move) ]
+           (cons {:status status
+                  :move move
+                  :drawn-card drawn-card
+                  :post-game game'
+                  :pre-game game}
+                 (turner game')))
+         (catch Exception e
+           [{:status :exception
+                        :move move
+                        :game game
+                        :exception e}]))))))
+
+(comment
+  (def responses (take 1000 (rand-turns test-game)))
+  (def last-response (last responses))
+  (:status last-response))

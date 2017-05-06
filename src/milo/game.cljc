@@ -25,23 +25,6 @@
                             ::destination
                             ::source]))
 
-(defn move-sentence
-  "Builds a English sentence describing a move."
-  [player {:keys [:milo.player/id :milo.card/card :milo.game/destination :milo.game/source]}]
-  (str (if (= player id)
-         "You"
-         id)
-       " "
-       (case destination
-         :expedition "played"
-         :discard-pile "discarded")
-       " "
-       (card/label card)
-       " and drew "
-       (if (= :draw-pile source)
-         "a new card."
-         (str "from the " (-> source name str/capitalize) " discard pile."))))
-
 (defn move
   [player-id card destination source]
   {::player/id player-id
@@ -240,11 +223,11 @@
         drawing-from-draw-pile? (= source :draw-pile)
         ;; We're OK if we just discarded a card with the same color as
         ;; the discard pile we're drawing from.
-        actively-discarding? (and (= destination :discard-pile)
-                                  (= (::card/color card) source))
+        taking-own-discard? (and (= destination :discard-pile)
+                                 (= (::card/color card) source))
         discards-available? (not (empty? (get-in round [::discard-piles source])))]
     (when-not (or drawing-from-draw-pile?
-                  actively-discarding?
+                  taking-own-discard?
                   discards-available?)
       :discard-pile-empty)))
 
@@ -257,12 +240,15 @@
 
 (defn drawn-card
   "Returns the card that will be drawn when the given move is executed."
-  [round move]
-  (let [source (::source move)]
-    (if (= source :draw-pile)
-      (first (::draw-pile round))
-      (let [discard-pile (get-in round [::discard-piles source])]
-        (last discard-pile)))))
+  [round {:keys [::source ::destination ::card/card]}]
+  (if (= source :draw-pile)
+    (first (::draw-pile round))
+    (let [taking-own-discard? (and (= destination :discard-pile)
+                                   (= (::card/color card) source))]
+      (if taking-own-discard?
+        card
+        (let [discard-pile (get-in round [::discard-piles source])]
+          (last discard-pile))))))
 
 (defn remove-drawn-card
   "Removes the drawn card from the appropriate source."
@@ -270,7 +256,7 @@
   (let [source (::source move)]
     (if (= source :draw-pile)
       (update round ::draw-pile rest)
-      (update-in round [::discard-piles source] #(or (butlast %) [])))))
+      (update-in round [::discard-piles source] #(or (rest %) [])))))
 
 (defn remove-from-hand
   "Removes the first instance of card from the given player's hand."

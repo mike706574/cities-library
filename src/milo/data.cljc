@@ -2,6 +2,7 @@
   (:require
    #?(:clj [clojure.spec.alpha :as s]
       :cljs [cljs.spec :as s])
+   [clojure.string :as str]
    [milo.card :as card]
    [milo.player :as player]
    [milo.misc :as misc]
@@ -29,23 +30,50 @@
                         potential-moves)]
     possible-moves))
 
-(defn print-discards
-  [game]
-  (doseq [color card/colors]
-    (println (str (name color) " discards: " (pr-str (map card/label (get-in game [::game/round ::game/discard-piles color])))))))
+(defn hand
+  [game player]
+  (get-in game [::game/round ::game/player-data player ::player/hand]))
 
-(defn print-hands
-  [game]
-  (doseq [player (::game/players game)]
-    (println (str player "'s hand: " (pr-str (map card/label (get-in game [::game/round ::game/player-data player ::player/hand])))))))
+(defn discards
+  ([game]
+   (get-in game [::game/round ::game/discard-piles]))
+  ([game color]
+   (get-in game [::game/round ::game/discard-piles color])))
 
-(defn print-cards-left
-  [game]
-  (println (str (count (::game/draw-pile (::game/round game))) " cards left. "
-                (count (::game/remaining-rounds game)) " rounds left.")))
+(defn turn [game] (-> game ::game/round ::game/turn))
 
-(defn print-all
-  [game]
-  (print-cards-left game)
-  (print-hands game)
-  (print-discards game))
+(defn move-sentence
+  "Builds a English sentence describing a move from the perspective of a player."
+  [player {:keys [:milo.player/id :milo.card/card :milo.game/destination :milo.game/source]}]
+  (str (if (= player id)
+         "You"
+         id)
+       " "
+       (case destination
+         :expedition "played"
+         :discard-pile "discarded")
+       " "
+       (card/label card)
+       " and drew "
+       (if (= :draw-pile source)
+         "a new card."
+         (str "from the " (-> source name str/capitalize) " discard pile."))))
+
+(defn turn-sentence
+  "Builds a English sentence describing a turn."
+  [{:keys [:milo.player/id
+           :milo.card/card
+           :milo.game/destination
+           :milo.game/source]} drawn-card]
+  (str id
+       " "
+       (case destination
+         :expedition "played"
+         :discard-pile "discarded")
+       " "
+       (card/label card)
+       " and drew "
+       (card/label drawn-card)
+       (if (= :draw-pile source)
+         (str " from the draw pile.")
+         (str " from the " (-> source name str/capitalize) " discard pile."))))
