@@ -14,10 +14,6 @@
 
 (stest/instrument)
 
-(comment
-  "Generating decks"
-  (vec (map card/short-card (take 20 (shuffle card/deck)))))
-
 (def deck-2
   [(card/number :red 4)
    (card/wager :yellow 1)

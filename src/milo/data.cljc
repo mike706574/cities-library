@@ -53,7 +53,7 @@
          :expedition "played"
          :discard-pile "discarded")
        " "
-       (card/label card)
+       (card/description card)
        " and drew "
        (if (= :draw-pile source)
          "a new card."
@@ -77,3 +77,17 @@
        (if (= :draw-pile source)
          (str " from the draw pile.")
          (str " from the " (-> source name str/capitalize) " discard pile."))))
+
+(defn rand-turns
+  [game]
+  (lazy-seq
+   (when-not (game/game-over? game)
+     (let [move (rand-nth (possible-moves (:milo.game/round game)))]
+       (let [{status :milo.game/status
+              game' :milo.game/game
+              drawn-card :milo.game/drawn-card} (game/take-turn game move) ]
+         (cons {:status status
+                :move move
+                :drawn-card drawn-card
+                :game game}
+               (rand-turns game')))))))

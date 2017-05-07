@@ -410,5 +410,5 @@
   (first (filter #(not= % player) (::players game))))
 
 (s/fdef opponent
-  :args (s/cat :game ::game)
+  :args (s/cat :game ::game :player ::player/id)
   :ret ::player/id)
