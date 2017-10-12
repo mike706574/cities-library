@@ -1,7 +1,5 @@
 # cities
-[![CircleCI](https://circleci.com/gh/mike706574/cities.svg?style=svg)](https://circleci.com/gh/mike706574/cities)
-
-[Lost Cities](https://en.wikipedia.org/wiki/Lost_Cities) in Clojure. Or an excuse to thoroughly use spec.
+[Lost Cities](https://en.wikipedia.org/wiki/Lost_Cities) in Clojure.
 
 ## Copyright and License
 
