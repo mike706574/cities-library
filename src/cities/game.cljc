@@ -1,11 +1,11 @@
-(ns milo.game
+(ns cities.game
   (:require
    #?(:clj [clojure.spec.alpha :as s]
       :cljs [cljs.spec :as s])
    [clojure.string :as str]
-   [milo.card :as card]
-   [milo.player :as player]
-   [milo.misc :as misc]))
+   [cities.card :as card]
+   [cities.player :as player]
+   [cities.misc :as misc]))
 
 (s/def ::player-data (s/map-of ::player/id ::player/data :count 2))
 (s/def ::players (s/tuple ::player/id ::player/id))

@@ -1,4 +1,4 @@
-(ns milo.card
+(ns cities.card
   (:refer-clojure :exclude [number?])
   #?(:clj
      (:require [clojure.spec.alpha :as s]

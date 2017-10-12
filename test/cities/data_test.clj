@@ -1,10 +1,10 @@
-(ns milo.game-test
+(ns cities.game-test
   (:require
    [clojure.test :refer :all]
-   [milo.card :as card]
-   [milo.data :as data]
-   [milo.game :as game]
-   [milo.player :as player]))
+   [cities.card :as card]
+   [cities.data :as data]
+   [cities.game :as game]
+   [cities.player :as player]))
 
 (deftest possible-moves-1
   (is

@@ -1,4 +1,4 @@
-(ns milo.game-test
+(ns cities.game-test
   (:require
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
@@ -8,11 +8,11 @@
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
-   [milo.card :as card]
-   [milo.player :as player]
-   [milo.game :as game]
+   [cities.card :as card]
+   [cities.player :as player]
+   [cities.game :as game]
    [clojure.test :as test]
-   [milo.data :as data]))
+   [cities.data :as data]))
 
 (stest/instrument)
 
@@ -32,7 +32,7 @@
                                                       ::player/expeditions card/empty-piles}}}))
       "If there are cards in the draw pile, the round isn't over."))
 
-(stest/check 'milo.game/collect-cards)
+(stest/check 'cities.game/collect-cards)
 
 (def players #{"Mike" "Abby"})
 
@@ -41,8 +41,8 @@
 
 (def test-game (game/rand-game players))
 
-(stest/check 'milo.game/round
-  {:gen {:milo.player/id #(s/gen players)}})
+(stest/check 'cities.game/round
+  {:gen {:cities.player/id #(s/gen players)}})
 
 (def steps (atom []))
 

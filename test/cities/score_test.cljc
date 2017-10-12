@@ -1,4 +1,4 @@
-(ns milo.score-test
+(ns cities.score-test
   (:require
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
@@ -6,10 +6,10 @@
    [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.properties :as prop]
-   [milo.game :as game]
-   [milo.card :as card]
-   [milo.player :as player]
-   [milo.score :as score]
+   [cities.game :as game]
+   [cities.card :as card]
+   [cities.player :as player]
+   [cities.score :as score]
    [clojure.test :as test]))
 
 (deftest expedition-score-1

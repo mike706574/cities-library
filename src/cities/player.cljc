@@ -1,10 +1,10 @@
-(ns milo.player
+(ns cities.player
   #?(:clj
      (:require [clojure.spec.alpha :as s]
-               [milo.card :as card])
+               [cities.card :as card])
      :cljs
      (:require [cljs.spec :as s]
-               [milo.card :as card])))
+               [cities.card :as card])))
 
 (defn under-wager-limit?
   [cards]

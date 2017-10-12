@@ -1,11 +1,11 @@
-(ns milo.score
+(ns cities.score
   (:require
    #?(:clj [clojure.spec.alpha :as s]
       :cljs [cljs.spec :as s])
-   [milo.card :as card]
-   [milo.player :as player]
-   [milo.game :as game]
-   [milo.misc :as misc]))
+   [cities.card :as card]
+   [cities.player :as player]
+   [cities.game :as game]
+   [cities.misc :as misc]))
 
 (defn expedition-score
   "Calculates the score for an expedition."

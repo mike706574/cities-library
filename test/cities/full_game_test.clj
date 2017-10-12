@@ -1,16 +1,16 @@
-(ns milo.full_game-test
+(ns cities.full_game-test
   (:require
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.spec.test.alpha :as stest]
    [clojure.test :refer [deftest testing is]]
-   [milo.card :as card]
-   [milo.player :as player]
-   [milo.game :as game]
+   [cities.card :as card]
+   [cities.player :as player]
+   [cities.game :as game]
    [clojure.walk :as walk]
    [clojure.test :as test]
-   [milo.data :as data]))
+   [cities.data :as data]))
 
 (stest/instrument)
 

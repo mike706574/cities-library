@@ -1,4 +1,4 @@
-(ns milo.misc)
+(ns cities.misc)
 
 (defn cartesian-product
   "See clojure.math.combinatorics/cartesian-product."

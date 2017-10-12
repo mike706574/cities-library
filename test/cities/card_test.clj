@@ -1,9 +1,9 @@
-(ns milo.card-test
+(ns cities.card-test
   (:require
    [clojure.test :refer :all]
    [clojure.spec.test.alpha :as stest]
    [clojure.spec.gen.alpha :as gen]
-   [milo.card :as card]
+   [cities.card :as card]
    [clojure.spec.alpha :as s]))
 
 (deftest label
@@ -15,4 +15,4 @@
   (is (= "a Green wager card" (card/description (card/wager-1 :green)))))
 
 (stest/instrument)
-(stest/check (stest/enumerate-namespace 'milo.card))
+(stest/check (stest/enumerate-namespace 'cities.card))
